@@ -8,9 +8,11 @@ import com.martinsdev.pagamentos.infra.client.dto.PedidoDTO;
 import com.martinsdev.pagamentos.infra.client.dto.StatusPedido;
 import com.martinsdev.pagamentos.infra.exception.InvalidOperationException;
 import com.martinsdev.pagamentos.infra.exception.ResourceNotFoundException;
+import com.martinsdev.pagamentos.infra.exception.ServiceUnavailableException;
 import com.martinsdev.pagamentos.model.Pagamento;
 import com.martinsdev.pagamentos.model.enums.StatusPagamento;
 import com.martinsdev.pagamentos.repository.PagamentoRepository;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -36,6 +38,7 @@ public class PagamentoService {
                 .orElseThrow(() -> new ResourceNotFoundException(id));
     }
 
+    @CircuitBreaker(name = "criarPagamento", fallbackMethod = "fallbackCriarPagamento")
     public PagamentoResponseDTO criarPagamento(PagamentoCriarRequestDTO pagamentoDTO) {
         //código para buscar um pedido pelo OpenFeing
         PedidoDTO pedido = pedidoClient.buscarPedido(pagamentoDTO.pedidoId());
@@ -65,6 +68,7 @@ public class PagamentoService {
         return new PagamentoResponseDTO(pagamento);
     }
 
+    @CircuitBreaker(name = "aprovarPagamento", fallbackMethod = "fallbackAprovarPagamento")
     public PagamentoResponseDTO aprovarPagamento(String id) {
         Pagamento pagamento = buscarPagamentoPendente(id);
 
@@ -78,6 +82,7 @@ public class PagamentoService {
         return new PagamentoResponseDTO(pagamento);
     }
 
+    @CircuitBreaker(name = "recusarPagamento", fallbackMethod = "fallbackRecusarPagamento")
     public PagamentoResponseDTO recusarPagamento(String id) {
         Pagamento pagamento = buscarPagamentoPendente(id);
 
@@ -108,5 +113,32 @@ public class PagamentoService {
         }
 
         return pagamento;
+    }
+
+    //Métodos de fallback
+    public PagamentoResponseDTO fallbackCriarPagamento(PagamentoCriarRequestDTO pagamentoDTO, Exception e) {
+        throw new ServiceUnavailableException("Serviço de pedidos indisponível no momento. Tente novamente mais tarde.");
+    }
+
+    public PagamentoResponseDTO fallbackAprovarPagamento(String id, Exception e) {
+        Pagamento pagamento = repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(id));
+
+        pagamento.setStatus(StatusPagamento.APROVADO_SEM_INTEGRACAO);
+        pagamento.setDataAtualizacao(LocalDateTime.now());
+
+        repository.save(pagamento);
+        return new PagamentoResponseDTO(pagamento);
+    }
+
+    public PagamentoResponseDTO fallbackRecusarPagamento(String id, Exception e) {
+        Pagamento pagamento = repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(id));
+
+        pagamento.setStatus(StatusPagamento.RECUSADO_SEM_INTEGRACAO);
+        pagamento.setDataAtualizacao(LocalDateTime.now());
+
+        repository.save(pagamento);
+        return new PagamentoResponseDTO(pagamento);
     }
 }

@@ -3,13 +3,13 @@ package com.martinsdev.pagamentos.infra.handler;
 import com.martinsdev.pagamentos.infra.exception.ErrorResponse;
 import com.martinsdev.pagamentos.infra.exception.InvalidOperationException;
 import com.martinsdev.pagamentos.infra.exception.ResourceNotFoundException;
+import com.martinsdev.pagamentos.infra.exception.ServiceUnavailableException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.web.client.ResourceAccessException;
 
 import java.time.Instant;
 import java.util.stream.Collectors;
@@ -41,5 +41,10 @@ public class GlobalExceptionHandler {
         HttpStatus status = HttpStatus.BAD_REQUEST;
         ErrorResponse errorResponse = new ErrorResponse(Instant.now(), status.value(), error, message, request.getRequestURI());
         return ResponseEntity.status(status).body(errorResponse);
+    }
+
+    @ExceptionHandler(ServiceUnavailableException.class)
+    public ResponseEntity<Void> handleServiceUnavailable(ServiceUnavailableException ex, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
     }
 }
