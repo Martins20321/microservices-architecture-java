@@ -79,6 +79,18 @@ public class PedidoService {
     }
 
     @Transactional
+    //O pedido será cancelado ao recusar o pagamento
+    public PedidoResponseDTO recusarPagamento(Long id) {
+        Pedido pedido = repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(id));
+
+        pedido.setStatus(StatusPedido.CANCELADO);
+
+        repository.save(pedido);
+        return new PedidoResponseDTO(pedido);
+    }
+
+    @Transactional
     public void cancelarPedido(Long id) {
         Pedido pedido = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(id));

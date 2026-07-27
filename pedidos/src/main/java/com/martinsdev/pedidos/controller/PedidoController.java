@@ -49,6 +49,11 @@ public class PedidoController {
         return ResponseEntity.ok(service.confirmarPagamento(id));
     }
 
+    @PutMapping("/{id}/recusar-pagamento")
+    public ResponseEntity<PedidoResponseDTO> recusarPagamento(@PathVariable Long id) {
+        return ResponseEntity.ok(service.recusarPagamento(id));
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> cancelarPedido(@PathVariable Long id) {
         service.cancelarPedido(id);

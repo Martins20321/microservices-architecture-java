@@ -84,6 +84,8 @@ public class PagamentoService {
         pagamento.setStatus(StatusPagamento.RECUSADO);
         pagamento.setDataAtualizacao(LocalDateTime.now());
 
+        pedidoClient.recusarPagamento(pagamento.getPedidoId());
+
         repository.save(pagamento);
         return new PagamentoResponseDTO(pagamento);
     }

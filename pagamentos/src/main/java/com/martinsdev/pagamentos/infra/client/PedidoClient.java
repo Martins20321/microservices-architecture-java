@@ -14,4 +14,7 @@ public interface PedidoClient {
 
     @PutMapping("/v1/pedidos/{id}/confirmar-pagamento")
     void confirmarPagamento(@PathVariable Long id);
+
+    @PutMapping("/v1/pedidos/{id}/recusar-pagamento")
+    void recusarPagamento(@PathVariable Long id);
 }
