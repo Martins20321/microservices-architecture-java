@@ -12,6 +12,7 @@ import com.martinsdev.pagamentos.infra.exception.ServiceUnavailableException;
 import com.martinsdev.pagamentos.model.Pagamento;
 import com.martinsdev.pagamentos.model.enums.StatusPagamento;
 import com.martinsdev.pagamentos.repository.PagamentoRepository;
+import feign.FeignException;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -41,31 +42,35 @@ public class PagamentoService {
     @CircuitBreaker(name = "criarPagamento", fallbackMethod = "fallbackCriarPagamento")
     public PagamentoResponseDTO criarPagamento(PagamentoCriarRequestDTO pagamentoDTO) {
         //código para buscar um pedido pelo OpenFeing
-        PedidoDTO pedido = pedidoClient.buscarPedido(pagamentoDTO.pedidoId());
+        try {
+            PedidoDTO pedido = pedidoClient.buscarPedido(pagamentoDTO.pedidoId());
 
-        //Existe um pagamento relacionado a um pedidoId onde não seja com o Status CANCELADO
-        if (repository.existsByPedidoIdAndStatusNot(pedido.id(), StatusPagamento.CANCELADO)) {
-            throw new InvalidOperationException("There is already an active payment for this order");
+            //Existe um pagamento relacionado a um pedidoId onde não seja com o Status CANCELADO
+            if (repository.existsByPedidoIdAndStatusNot(pedido.id(), StatusPagamento.CANCELADO)) {
+                throw new InvalidOperationException("There is already an active payment for this order");
+            }
+
+            if (pedido.status() == StatusPedido.CANCELADO) {
+                throw new InvalidOperationException("Cannot create payment for a cancelled order");
+            }
+
+            List<ItemPedidoDTO> itens = pedido.itens();
+            BigDecimal valor = itens.stream().map(ItemPedidoDTO::valor).reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            Pagamento pagamento = Pagamento.builder()
+                    .pedidoId(pagamentoDTO.pedidoId())
+                    .valor(valor)
+                    .status(StatusPagamento.PENDENTE)
+                    .formaPagamento(pagamentoDTO.formaPagamento())
+                    .dataCriacao(LocalDateTime.now())
+                    .dataAtualizacao(LocalDateTime.now())
+                    .build();
+
+            repository.save(pagamento);
+            return new PagamentoResponseDTO(pagamento);
+        } catch (FeignException.NotFound e) {
+            throw new ResourceNotFoundException(pagamentoDTO.pedidoId().toString());
         }
-
-        if (pedido.status() == StatusPedido.CANCELADO) {
-            throw new InvalidOperationException("Cannot create payment for a cancelled order");
-        }
-
-        List<ItemPedidoDTO> itens = pedido.itens();
-        BigDecimal valor = itens.stream().map(ItemPedidoDTO::valor).reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        Pagamento pagamento = Pagamento.builder()
-                .pedidoId(pagamentoDTO.pedidoId())
-                .valor(valor)
-                .status(StatusPagamento.PENDENTE)
-                .formaPagamento(pagamentoDTO.formaPagamento())
-                .dataCriacao(LocalDateTime.now())
-                .dataAtualizacao(LocalDateTime.now())
-                .build();
-
-        repository.save(pagamento);
-        return new PagamentoResponseDTO(pagamento);
     }
 
     @CircuitBreaker(name = "aprovarPagamento", fallbackMethod = "fallbackAprovarPagamento")
