@@ -68,6 +68,17 @@ public class PedidoService {
     }
 
     @Transactional
+    public PedidoResponseDTO confirmarPagamento(Long id) {
+        Pedido pedido = repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(id));
+
+        pedido.setStatus(StatusPedido.CONFIRMADO);
+
+        repository.save(pedido);
+        return new PedidoResponseDTO(pedido);
+    }
+
+    @Transactional
     public void cancelarPedido(Long id) {
         Pedido pedido = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(id));
