@@ -53,21 +53,6 @@ public class PedidoService {
     }
 
     @Transactional
-    public PedidoResponseDTO atualizarPedido(Long id, PedidoAtualizarRequestDTO atualizarRequestDTO) {
-        Pedido pedido = repository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException(id));
-
-        if (!pedido.getStatus().avancoPermitido(atualizarRequestDTO.status())) {
-            throw new InvalidOperationException();
-        }
-
-        pedido.setStatus(atualizarRequestDTO.status());
-
-        repository.save(pedido);
-        return new PedidoResponseDTO(pedido);
-    }
-
-    @Transactional
     public PedidoResponseDTO confirmarPagamento(Long id) {
         Pedido pedido = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(id));

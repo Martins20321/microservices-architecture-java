@@ -39,11 +39,6 @@ public class PedidoController {
         return ResponseEntity.created(uri).body(pedido);
     }
 
-    @PatchMapping("/{id}")
-    public ResponseEntity<PedidoResponseDTO> atualizarPedido(@PathVariable Long id, @RequestBody @Valid PedidoAtualizarRequestDTO pedidoDTO) {
-        return ResponseEntity.ok(service.atualizarPedido(id, pedidoDTO));
-    }
-
     @PutMapping("/{id}/confirmar-pagamento")
     public ResponseEntity<PedidoResponseDTO> confirmarPagamento(@PathVariable Long id) {
         return ResponseEntity.ok(service.confirmarPagamento(id));
