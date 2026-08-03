@@ -13,6 +13,8 @@ public class InfraApp {
         VpcStack vpcStack = new VpcStack(app, "MsVpc");
         ClusterStack clusterStack = new ClusterStack(app, "MsCluster", vpcStack.getVpc());
         clusterStack.addStackDependency(vpcStack);
+        RdsStack rdsStack = new RdsStack(app, "MsRdsPedidos", vpcStack.getVpc());
+        rdsStack.addStackDependency(vpcStack);
 
         app.synth();
     }
