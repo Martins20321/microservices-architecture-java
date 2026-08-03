@@ -6,6 +6,9 @@ import software.amazon.awscdk.services.ec2.Vpc;
 import software.constructs.Construct;
 
 public class VpcStack extends Stack {
+
+    private Vpc vpc;
+
     public VpcStack(final Construct scope, final String id) {
         this(scope, id, null);
     }
@@ -16,5 +19,9 @@ public class VpcStack extends Stack {
         Vpc vpc = Vpc.Builder.create(this, "microservices-vpc")
                 .maxAzs(3)
                 .build();
+    }
+
+    public Vpc getVpc() {
+        return vpc;
     }
 }

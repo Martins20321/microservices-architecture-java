@@ -10,7 +10,9 @@ public class InfraApp {
     public static void main(final String[] args) {
         App app = new App();
 
-        new VpcStack(app, "MsVpc");
+        VpcStack vpcStack = new VpcStack(app, "MsVpc");
+        ClusterStack clusterStack = new ClusterStack(app, "MsCluster", vpcStack.getVpc());
+        clusterStack.addStackDependency(vpcStack);
 
         app.synth();
     }
