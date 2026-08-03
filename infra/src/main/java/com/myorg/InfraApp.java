@@ -15,8 +15,10 @@ public class InfraApp {
         clusterStack.addStackDependency(vpcStack);
         RdsStack rdsStack = new RdsStack(app, "MsRdsPedidos", vpcStack.getVpc());
         rdsStack.addStackDependency(vpcStack);
+        PedidosServiceStack pedidosServiceStack = new PedidosServiceStack(app, "MsPedidosService", clusterStack.getCluster());
+        pedidosServiceStack.addStackDependency(clusterStack);
+        pedidosServiceStack.addStackDependency(rdsStack);
 
         app.synth();
     }
 }
-
