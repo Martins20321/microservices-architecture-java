@@ -16,7 +16,7 @@ public class VpcStack extends Stack {
     public VpcStack(final Construct scope, final String id, final StackProps props) {
         super(scope, id, props);
 
-        Vpc vpc = Vpc.Builder.create(this, "microservices-vpc")
+        this.vpc = Vpc.Builder.create(this, "microservices-vpc")
                 .maxAzs(3)
                 .build();
     }
