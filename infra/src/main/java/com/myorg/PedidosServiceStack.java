@@ -71,5 +71,11 @@ public class PedidosServiceStack extends Stack {
                 .scaleOutCooldown(Duration.minutes(2))
                 .scaleInCooldown(Duration.minutes(3))
                 .build());
+
+        //Expor a url do Load Balancer de Pedidos para que ocorra a comunicação com Pagamentos
+        CfnOutput.Builder.create(this, "pedidos-load-balancer")
+                .exportName("pedidos-load-balancer")
+                .value(fargateService.getLoadBalancer().getLoadBalancerDnsName())
+                .build();
     }
 }
