@@ -42,5 +42,10 @@ public class DocumentDbStack extends Stack {
                 .exportName("pagamentos-db-endpoint")
                 .value(cluster.getClusterEndpoint().getHostname())
                 .build();
+
+        CfnOutput.Builder.create(this, "pagamentos-db-password")
+                .exportName("pagamentos-db-password")
+                .value(dbPassword.getValueAsString())
+                .build();
     }
 }

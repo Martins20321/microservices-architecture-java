@@ -18,6 +18,11 @@ public class InfraApp {
         PedidosServiceStack pedidosServiceStack = new PedidosServiceStack(app, "MsPedidosService", clusterStack.getCluster());
         pedidosServiceStack.addStackDependency(clusterStack);
         pedidosServiceStack.addStackDependency(rdsStack);
+        DocumentDbStack documentDbStack = new DocumentDbStack(app, "MsDocumentDb", vpcStack.getVpc());
+        documentDbStack.addStackDependency(vpcStack);
+        PagamentosServiceStack pagamentosServiceStack = new PagamentosServiceStack(app, "MsPagamentosService", clusterStack.getCluster());
+        pagamentosServiceStack.addStackDependency(documentDbStack);
+        pagamentosServiceStack.addStackDependency(clusterStack);
 
         app.synth();
     }
