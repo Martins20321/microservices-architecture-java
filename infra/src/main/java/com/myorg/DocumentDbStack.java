@@ -28,6 +28,7 @@ public class DocumentDbStack extends Stack {
                         .username("pagamentos_admin") // NOTE: 'admin' is reserved by DocumentDB
                         .password(SecretValue.unsafePlainText(dbPassword.getValueAsString()))
                         .build())
+                .instanceIdentifierBase("pagamentos-docdb") //Prefixo das instâncias do cluster
                 .instanceType(InstanceType.of(InstanceClass.BURSTABLE3, InstanceSize.MICRO))
                 .instances(1)  //Ele cria automaticamente uma instância primária (gravação e leitura)
                 .vpc(vpc)
