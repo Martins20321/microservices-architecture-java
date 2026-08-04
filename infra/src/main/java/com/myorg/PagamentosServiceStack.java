@@ -38,8 +38,8 @@ public class PagamentosServiceStack extends Stack {
                                         "SPRING_DATA_MONGODB_URI", "mongodb://" +
                                                 Fn.importValue("pagamentos-db-endpoint") + ":27017/pagamentos-ms",
                                         "SPRING_DATA_MONGODB_USERNAME", "pagamentos_admin",
-                                        "SPRING_DATA_MONGODB_PASSWORD", Fn.importValue("pagamentos-db-password")
-
+                                        "SPRING_DATA_MONGODB_PASSWORD", Fn.importValue("pagamentos-db-password"),
+                                        "PEDIDOS_MS_URL", "http://" + Fn.importValue("pedidos-load-balancer")
                                 ))
                                 .logDriver(LogDriver.awsLogs(AwsLogDriverProps.builder()
                                         .logGroup(LogGroup.Builder.create(this, "PagamentosMsLogGroup")
