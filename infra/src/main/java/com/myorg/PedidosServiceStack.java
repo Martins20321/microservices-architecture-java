@@ -39,7 +39,7 @@ public class PedidosServiceStack extends Stack {
                                 .environment(Map.of(
                                         "SPRING_DATASOURCE_URL", "jdbc:postgresql://" +
                                                 Fn.importValue("pedidos-db-endpoint") + ":5432/pedidos-ms",
-                                        "SPRING_DATASOURCE_USERNAME", "admin",
+                                        "SPRING_DATASOURCE_USERNAME", "pedidos_admin",
                                         "SPRING_DATASOURCE_PASSWORD", Fn.importValue("pedidos-db-password")
                                 ))
                                 .logDriver(LogDriver.awsLogs(AwsLogDriverProps.builder()

@@ -33,7 +33,7 @@ public class RdsStack extends Stack {
                                 .version(PostgresEngineVersion.VER_14_12)
                         .build()))
                 .vpc(vpc)
-                .credentials(Credentials.fromUsername("admin", CredentialsFromUsernameOptions.builder()
+                .credentials(Credentials.fromUsername("pedidos_admin", CredentialsFromUsernameOptions.builder()
                                 .password(SecretValue.unsafePlainText(dbPassword.getValueAsString())) //Senha do CFN Parameter
                         .build()))
                 .instanceType(InstanceType.of(InstanceClass.BURSTABLE3, InstanceSize.MICRO))
