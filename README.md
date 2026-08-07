@@ -14,26 +14,13 @@ Sistema de **Pedidos e Pagamentos** composto por microsserviços independentes q
 
 ### Local (Desenvolvimento)
 
-```
-Cliente → API Gateway (8081)
-              ↓
-         Eureka Server (Service Discovery)
-              ↓
-    ┌─────────────────────────┐
-    │                         │
-pedidos-ms              pagamentos-ms
-(PostgreSQL)              (MongoDB)
-```
+<img width="792" height="412" alt="DiagramaDesenvolvimento drawio" src="https://github.com/user-attachments/assets/9311b585-4d81-4014-989d-83bf7ac31dd4" />
+
 
 ### AWS (Produção)
 
-```
-Cliente → ALB pedidos-ms        Cliente → ALB pagamentos-ms
-              ↓                                ↓
-     ECS Fargate (pedidos)          ECS Fargate (pagamentos)
-              ↓                                ↓
-         RDS PostgreSQL              Amazon DocumentDB
-```
+<img width="1234" height="524" alt="DiagramaAWS drawio" src="https://github.com/user-attachments/assets/ec25131d-7e59-474e-b3bd-b304be6f9ed8" />
+
 
 ### Fluxo principal
 
