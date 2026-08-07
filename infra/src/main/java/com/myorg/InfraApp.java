@@ -11,15 +11,20 @@ public class InfraApp {
         App app = new App();
 
         VpcStack vpcStack = new VpcStack(app, "MsVpc");
+
         ClusterStack clusterStack = new ClusterStack(app, "MsCluster", vpcStack.getVpc());
         clusterStack.addStackDependency(vpcStack);
+
         RdsStack rdsStack = new RdsStack(app, "MsRdsPedidos", vpcStack.getVpc());
         rdsStack.addStackDependency(vpcStack);
+
         PedidosServiceStack pedidosServiceStack = new PedidosServiceStack(app, "MsPedidosService", clusterStack.getCluster());
         pedidosServiceStack.addStackDependency(clusterStack);
         pedidosServiceStack.addStackDependency(rdsStack);
+
         DocumentDbStack documentDbStack = new DocumentDbStack(app, "MsDocumentDb", vpcStack.getVpc());
         documentDbStack.addStackDependency(vpcStack);
+
         PagamentosServiceStack pagamentosServiceStack = new PagamentosServiceStack(app, "MsPagamentosService", clusterStack.getCluster());
         pagamentosServiceStack.addStackDependency(documentDbStack);
         pagamentosServiceStack.addStackDependency(clusterStack);

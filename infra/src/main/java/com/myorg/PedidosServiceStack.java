@@ -38,18 +38,21 @@ public class PedidosServiceStack extends Stack {
                                 .containerName("pedidos-ms-db")
                                 .environment(Map.of(
                                         "SPRING_DATASOURCE_URL", "jdbc:postgresql://" +
-                                                Fn.importValue("pedidos-db-endpoint") + ":5432/pedidos-ms",
+                                                Fn.importValue("pedidos-db-endpoint") + ":5432/pedidos_ms",
                                         "SPRING_DATASOURCE_USERNAME", "pedidos_admin",
-                                        "SPRING_DATASOURCE_PASSWORD", Fn.importValue("pedidos-db-password")
+                                        "SPRING_DATASOURCE_PASSWORD", Fn.importValue("pedidos-db-password"),
+                                        "EUREKA_CLIENT_ENABLED", "false",
+                                        "SPRING_CLOUD_DISCOVERY_ENABLED", "false",
+                                        "SERVER_PORT", "8080"
                                 ))
-                                .logDriver(LogDriver.awsLogs(AwsLogDriverProps.builder()
-                                                .logGroup(LogGroup.Builder.create(this, "PedidosMsLogGroup")
-                                                        .logGroupName("PedidosMs")
-                                                        .removalPolicy(RemovalPolicy.DESTROY)
-                                                        .build())
-                                                .streamPrefix("PedidosMs")
-                                        .build()))
+                .logDriver(LogDriver.awsLogs(AwsLogDriverProps.builder()
+                        .logGroup(LogGroup.Builder.create(this, "PedidosMsLogGroup")
+                                .logGroupName("PedidosMs")
+                                .removalPolicy(RemovalPolicy.DESTROY)
                                 .build())
+                        .streamPrefix("PedidosMs")
+                        .build()))
+                .build())
                 .memoryLimitMiB(1024)       // Default is 512
                 .publicLoadBalancer(true)   // Default is true
                 .build();

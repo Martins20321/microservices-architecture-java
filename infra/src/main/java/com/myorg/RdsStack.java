@@ -23,8 +23,12 @@ public class RdsStack extends Stack {
                 .build();
 
         //Criando o Security Groups
-        ISecurityGroup iSecurityGroup = SecurityGroup.fromSecurityGroupId(this, id, vpc.getVpcDefaultSecurityGroup());
-        iSecurityGroup.addIngressRule(Peer.anyIpv4(), Port.tcp(5432)); //Liberando qualquer requisição IPV4 na porta 5432(PostgreSQl)
+        SecurityGroup sgRds = SecurityGroup.Builder.create(this, "RdsSecurityGroup")
+                .securityGroupName("pedidos-ms-rds-sg")
+                .description("Security Group para instancia RDS")
+                .vpc(vpc)
+                .build();
+        sgRds.addIngressRule(Peer.anyIpv4(), Port.tcp(5432)); //Liberando qualquer requisição IPV4 na porta 5432(PostgreSQl)
 
         //Criando a instância do banco
         DatabaseInstance databaseInstance = DatabaseInstance.Builder.create(this, "microservices-db")
@@ -32,6 +36,7 @@ public class RdsStack extends Stack {
                 .engine(DatabaseInstanceEngine.postgres(PostgresInstanceEngineProps.builder()
                                 .version(PostgresEngineVersion.VER_14_12)
                         .build()))
+                .databaseName("pedidos_ms")
                 .vpc(vpc)
                 .credentials(Credentials.fromUsername("pedidos_admin", CredentialsFromUsernameOptions.builder()
                                 .password(SecretValue.unsafePlainText(dbPassword.getValueAsString())) //Senha do CFN Parameter
@@ -39,7 +44,7 @@ public class RdsStack extends Stack {
                 .instanceType(InstanceType.of(InstanceClass.BURSTABLE3, InstanceSize.MICRO))
                 .multiAz(false)
                 .allocatedStorage(10) //Alocação de GB de memória
-                .securityGroups(Collections.singletonList(iSecurityGroup)) //Ele espera uma lista, mas estou passando somente um SG
+                .securityGroups(Collections.singletonList(sgRds)) //Ele espera uma lista, mas estou passando somente um SG
                 .vpcSubnets(SubnetSelection.builder()
                         .subnets(vpc.getPrivateSubnets()) //Subnets privadas da nossa VPC
                         .build())
