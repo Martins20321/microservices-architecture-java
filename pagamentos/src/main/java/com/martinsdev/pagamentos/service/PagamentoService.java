@@ -2,6 +2,7 @@ package com.martinsdev.pagamentos.service;
 
 import com.martinsdev.pagamentos.dto.PagamentoCriarRequestDTO;
 import com.martinsdev.pagamentos.dto.PagamentoResponseDTO;
+import com.martinsdev.pagamentos.event.PagamentoConcluidoEvent;
 import com.martinsdev.pagamentos.infra.client.PedidoClient;
 import com.martinsdev.pagamentos.infra.client.dto.ItemPedidoDTO;
 import com.martinsdev.pagamentos.infra.client.dto.PedidoDTO;
@@ -15,6 +16,7 @@ import com.martinsdev.pagamentos.repository.PagamentoRepository;
 import feign.FeignException;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -29,6 +31,7 @@ public class PagamentoService {
 
     private final PagamentoRepository repository;
     private final PedidoClient pedidoClient;
+    private final RabbitTemplate rabbitTemplate;
 
     public Page<PagamentoResponseDTO> buscarTodos(Pageable pageable) {
         return repository.findAll(pageable).map(PagamentoResponseDTO::new);
@@ -73,15 +76,14 @@ public class PagamentoService {
         }
     }
 
-    @CircuitBreaker(name = "aprovarPagamento", fallbackMethod = "fallbackAprovarPagamento")
     public PagamentoResponseDTO aprovarPagamento(String id) {
         Pagamento pagamento = buscarPagamentoPendente(id);
 
         pagamento.setStatus(StatusPagamento.APROVADO);
         pagamento.setDataAtualizacao(LocalDateTime.now());
 
-        //Confirmando pagamento e alterando o Status para CONFIRMADO do lado de Pedidos
-        pedidoClient.confirmarPagamento(pagamento.getPedidoId());
+        //Passando já com o JacksonConveter, com exchange e a routing key
+        rabbitTemplate.convertAndSend("pagamento.ex","pagamento.aprovado-pedido", new PagamentoConcluidoEvent(pagamento.getPedidoId()));
 
         repository.save(pagamento);
         return new PagamentoResponseDTO(pagamento);
