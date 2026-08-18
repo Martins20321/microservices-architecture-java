@@ -83,7 +83,7 @@ public class PagamentoService {
         pagamento.setDataAtualizacao(LocalDateTime.now());
 
         //Passando já com o JacksonConveter, com exchange e a routing key
-        rabbitTemplate.convertAndSend("pagamento.ex","pagamento.aprovado-pedido", new PagamentoConcluidoEvent(pagamento.getPedidoId()));
+        rabbitTemplate.convertAndSend("pagamentos.ex", "pagamento.aprovado-pedido", new PagamentoConcluidoEvent(pagamento.getPedidoId()));
 
         repository.save(pagamento);
         return new PagamentoResponseDTO(pagamento);
@@ -125,17 +125,6 @@ public class PagamentoService {
     //Métodos de fallback
     public PagamentoResponseDTO fallbackCriarPagamento(PagamentoCriarRequestDTO pagamentoDTO, Exception e) {
         throw new ServiceUnavailableException("Serviço de pedidos indisponível no momento. Tente novamente mais tarde.");
-    }
-
-    public PagamentoResponseDTO fallbackAprovarPagamento(String id, Exception e) {
-        Pagamento pagamento = repository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException(id));
-
-        pagamento.setStatus(StatusPagamento.APROVADO_SEM_INTEGRACAO);
-        pagamento.setDataAtualizacao(LocalDateTime.now());
-
-        repository.save(pagamento);
-        return new PagamentoResponseDTO(pagamento);
     }
 
     public PagamentoResponseDTO fallbackRecusarPagamento(String id, Exception e) {
