@@ -6,7 +6,6 @@ import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitAdmin;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.support.converter.JacksonJsonMessageConverter;
-import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.annotation.Bean;
@@ -38,7 +37,7 @@ public class PagamentoAMQPConfiguration {
     }
 
     @Bean
-    public ApplicationListener<ApplicationReadyEvent> applicationListener(RabbitAdmin rabbitAdmin, ConnectionFactory connectionFactory) {
+    public ApplicationListener<ApplicationReadyEvent> applicationListener(RabbitAdmin rabbitAdmin) {
         return event -> rabbitAdmin.initialize();
     }
 }
