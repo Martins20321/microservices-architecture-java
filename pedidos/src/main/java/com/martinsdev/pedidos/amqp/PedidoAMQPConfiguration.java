@@ -1,13 +1,14 @@
 package com.martinsdev.pedidos.amqp;
 
 import org.springframework.amqp.core.*;
+import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitAdmin;
+import org.springframework.amqp.support.converter.JacksonJsonMessageConverter;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.messaging.converter.JacksonJsonMessageConverter;
 
 @Configuration
 public class PedidoAMQPConfiguration {
@@ -33,6 +34,14 @@ public class PedidoAMQPConfiguration {
     @Bean
     public JacksonJsonMessageConverter jacksonJsonMessageConverter() {
         return new JacksonJsonMessageConverter();
+    }
+
+    @Bean
+    public SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(ConnectionFactory connectionFactory, JacksonJsonMessageConverter jacksonJsonMessageConverter) {
+        SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
+        factory.setConnectionFactory(connectionFactory);
+        factory.setMessageConverter(jacksonJsonMessageConverter);
+        return factory;
     }
 
     @Bean
