@@ -22,7 +22,7 @@ public class PagamentoController {
     private final PagamentoService service;
 
     @GetMapping
-    public ResponseEntity<Page<PagamentoResponseDTO>> buscarTodos(@PageableDefault(size = 10, sort = "id") Pageable pageable) {
+    public ResponseEntity<Page<PagamentoResponseDTO>> buscarTodos(@PageableDefault(sort = "id") Pageable pageable) {
         return ResponseEntity.ok(service.buscarTodos(pageable));
     }
 
@@ -43,7 +43,7 @@ public class PagamentoController {
         return ResponseEntity.ok(service.aprovarPagamento(id));
     }
 
-    @PatchMapping("/{id}/reprovar")
+    @PatchMapping("/{id}/recusar")
     public ResponseEntity<PagamentoResponseDTO> recusarPagamento(@PathVariable String id) {
         return ResponseEntity.ok(service.recusarPagamento(id));
     }
