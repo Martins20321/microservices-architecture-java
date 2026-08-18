@@ -22,6 +22,15 @@ public class PedidoAMQPConfiguration {
     }
 
     @Bean
+    public Queue pagamentoRecusadoPedidoQueue() {
+        return QueueBuilder
+                .durable("pagamento.recusado-pedido")
+                .quorum()
+                .withArgument("x-quorum-initial-group-size", 3)
+                .build();
+    }
+
+    @Bean
     public DirectExchange directExchangePagamento() {
         return ExchangeBuilder.directExchange("pagamentos.ex").build();
     }
@@ -29,6 +38,11 @@ public class PedidoAMQPConfiguration {
     @Bean
     public Binding bindingPagamentoAprovado(Queue pagamentoAprovadoPedidoQueue, DirectExchange directExchangePagamento) {
         return BindingBuilder.bind(pagamentoAprovadoPedidoQueue).to(directExchangePagamento).with("pagamento.aprovado-pedido");
+    }
+
+    @Bean
+    public Binding bidingPagamentoRecusado(Queue pagamentoRecusadoPedidoQueue, DirectExchange directExchangePagamento) {
+        return BindingBuilder.bind(pagamentoRecusadoPedidoQueue).to(directExchangePagamento).with("pagamento.recusado-pedido");
     }
 
     @Bean
