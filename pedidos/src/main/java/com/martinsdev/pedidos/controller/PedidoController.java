@@ -1,6 +1,5 @@
 package com.martinsdev.pedidos.controller;
 
-import com.martinsdev.pedidos.dto.PedidoAtualizarRequestDTO;
 import com.martinsdev.pedidos.dto.PedidoCriarRequestDTO;
 import com.martinsdev.pedidos.dto.PedidoResponseDTO;
 import com.martinsdev.pedidos.service.PedidoService;
@@ -23,7 +22,7 @@ public class PedidoController {
     private final PedidoService service;
 
     @GetMapping
-    public ResponseEntity<Page<PedidoResponseDTO>> buscarTodos(@PageableDefault(size = 10, sort = "id") Pageable pageable) {
+    public ResponseEntity<Page<PedidoResponseDTO>> buscarTodos(@PageableDefault(sort = "id") Pageable pageable) {
         return ResponseEntity.ok(service.buscarTodos(pageable));
     }
 
@@ -37,11 +36,6 @@ public class PedidoController {
         PedidoResponseDTO pedido = service.criarPedido(pedidoDTO);
         URI uri = ServletUriComponentsBuilder.fromCurrentRequestUri().path("/{id}").buildAndExpand(pedido.id()).toUri();
         return ResponseEntity.created(uri).body(pedido);
-    }
-
-    @PutMapping("/{id}/confirmar-pagamento")
-    public ResponseEntity<PedidoResponseDTO> confirmarPagamento(@PathVariable Long id) {
-        return ResponseEntity.ok(service.confirmarPagamento(id));
     }
 
     @PutMapping("/{id}/recusar-pagamento")
