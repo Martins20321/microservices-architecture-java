@@ -3,6 +3,7 @@ package com.martinsdev.pagamentos.service;
 import com.martinsdev.pagamentos.dto.PagamentoCriarRequestDTO;
 import com.martinsdev.pagamentos.dto.PagamentoResponseDTO;
 import com.martinsdev.pagamentos.event.PagamentoConcluidoEvent;
+import com.martinsdev.pagamentos.event.PagamentoRecusadoEvent;
 import com.martinsdev.pagamentos.infra.client.PedidoClient;
 import com.martinsdev.pagamentos.infra.client.dto.ItemPedidoDTO;
 import com.martinsdev.pagamentos.infra.client.dto.PedidoDTO;
@@ -89,14 +90,13 @@ public class PagamentoService {
         return new PagamentoResponseDTO(pagamento);
     }
 
-    @CircuitBreaker(name = "recusarPagamento", fallbackMethod = "fallbackRecusarPagamento")
     public PagamentoResponseDTO recusarPagamento(String id) {
         Pagamento pagamento = buscarPagamentoPendente(id);
 
         pagamento.setStatus(StatusPagamento.RECUSADO);
         pagamento.setDataAtualizacao(LocalDateTime.now());
 
-        pedidoClient.recusarPagamento(pagamento.getPedidoId());
+        rabbitTemplate.convertAndSend("pagamentos.ex", "pagamento.recusado-pedido", new PagamentoRecusadoEvent(pagamento.getPedidoId()));
 
         repository.save(pagamento);
         return new PagamentoResponseDTO(pagamento);
@@ -125,16 +125,5 @@ public class PagamentoService {
     //Métodos de fallback
     public PagamentoResponseDTO fallbackCriarPagamento(PagamentoCriarRequestDTO pagamentoDTO, Exception e) {
         throw new ServiceUnavailableException("Serviço de pedidos indisponível no momento. Tente novamente mais tarde.");
-    }
-
-    public PagamentoResponseDTO fallbackRecusarPagamento(String id, Exception e) {
-        Pagamento pagamento = repository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException(id));
-
-        pagamento.setStatus(StatusPagamento.RECUSADO_SEM_INTEGRACAO);
-        pagamento.setDataAtualizacao(LocalDateTime.now());
-
-        repository.save(pagamento);
-        return new PagamentoResponseDTO(pagamento);
     }
 }
