@@ -52,6 +52,18 @@ public class PedidoService {
         return new PedidoResponseDTO(pedido);
     }
 
+    //Quando pagamento for criado relacionado a esse pedido, informa o status AGUARDANDO_CONFIRMAR_PAGAMENTO
+    @Transactional
+    public PedidoResponseDTO aguardarPagamento(Long id){
+        Pedido pedido = repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(id));
+
+        pedido.setStatus(StatusPedido.AGUARDANDO_CONFIRMAR_PAGAMENTO);
+        repository.save(pedido);
+
+        return new PedidoResponseDTO(pedido);
+    }
+
     @Transactional
     public PedidoResponseDTO confirmarPagamento(Long id) {
         Pedido pedido = repository.findById(id)
