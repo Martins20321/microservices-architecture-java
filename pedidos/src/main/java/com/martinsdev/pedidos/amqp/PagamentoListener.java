@@ -1,6 +1,7 @@
 package com.martinsdev.pedidos.amqp;
 
 import com.martinsdev.pedidos.event.PagamentoConcluidoEvent;
+import com.martinsdev.pedidos.event.PagamentoCriadoEvent;
 import com.martinsdev.pedidos.event.PagamentoRecusadoEvent;
 import com.martinsdev.pedidos.service.PedidoService;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +29,15 @@ public class PagamentoListener {
         pedidoService.recusarPagamento(pagamentoRecusado.pedidoId());
 
         String message = "Pagamento Recusado para o pedido com id: " + pagamentoRecusado.pedidoId();
+        System.out.println(message);
+    }
+
+    @RabbitListener(queues = "pagamento.aguardado-pedido")
+    public void receiveAguardado(@Payload PagamentoCriadoEvent pagamentoCriado) {
+        pedidoService.aguardarPagamento(pagamentoCriado.pedidoId());
+
+        String message = "Pagamento criado para o pedido com id: " + pagamentoCriado.pedidoId()
+                + " e o status atualizado para confirmar pagamento";
         System.out.println(message);
     }
 }
