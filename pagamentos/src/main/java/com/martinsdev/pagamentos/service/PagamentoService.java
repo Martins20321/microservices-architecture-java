@@ -3,6 +3,7 @@ package com.martinsdev.pagamentos.service;
 import com.martinsdev.pagamentos.dto.PagamentoCriarRequestDTO;
 import com.martinsdev.pagamentos.dto.PagamentoResponseDTO;
 import com.martinsdev.pagamentos.event.PagamentoConcluidoEvent;
+import com.martinsdev.pagamentos.event.PagamentoCriadoEvent;
 import com.martinsdev.pagamentos.event.PagamentoRecusadoEvent;
 import com.martinsdev.pagamentos.infra.client.PedidoClient;
 import com.martinsdev.pagamentos.infra.client.dto.ItemPedidoDTO;
@@ -71,6 +72,8 @@ public class PagamentoService {
                     .build();
 
             repository.save(pagamento);
+            rabbitTemplate.convertAndSend("pagamentos.ex", "pagamento.aguardado-pedido", new PagamentoCriadoEvent(pagamentoDTO.pedidoId()));
+
             return new PagamentoResponseDTO(pagamento);
         } catch (FeignException.NotFound e) {
             throw new ResourceNotFoundException(pagamentoDTO.pedidoId().toString());
@@ -83,10 +86,10 @@ public class PagamentoService {
         pagamento.setStatus(StatusPagamento.APROVADO);
         pagamento.setDataAtualizacao(LocalDateTime.now());
 
+        repository.save(pagamento);
         //Passando já com o JacksonConveter, com exchange e a routing key
         rabbitTemplate.convertAndSend("pagamentos.ex", "pagamento.aprovado-pedido", new PagamentoConcluidoEvent(pagamento.getPedidoId()));
 
-        repository.save(pagamento);
         return new PagamentoResponseDTO(pagamento);
     }
 
@@ -96,9 +99,9 @@ public class PagamentoService {
         pagamento.setStatus(StatusPagamento.RECUSADO);
         pagamento.setDataAtualizacao(LocalDateTime.now());
 
+        repository.save(pagamento);
         rabbitTemplate.convertAndSend("pagamentos.ex", "pagamento.recusado-pedido", new PagamentoRecusadoEvent(pagamento.getPedidoId()));
 
-        repository.save(pagamento);
         return new PagamentoResponseDTO(pagamento);
     }
 
