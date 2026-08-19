@@ -5,6 +5,7 @@ import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFacto
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitAdmin;
 import org.springframework.amqp.support.converter.JacksonJsonMessageConverter;
+import org.springframework.boot.amqp.autoconfigure.SimpleRabbitListenerContainerFactoryConfigurer;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.annotation.Bean;
@@ -18,6 +19,7 @@ public class PedidoAMQPConfiguration {
         return QueueBuilder.durable("pagamento.aprovado-pedido")
                 .quorum()
                 .withArgument("x-quorum-initial-group-size", 3)
+                .deadLetterExchange("pagamentos.dlx")
                 .build();
     }
 
@@ -27,6 +29,7 @@ public class PedidoAMQPConfiguration {
                 .durable("pagamento.recusado-pedido")
                 .quorum()
                 .withArgument("x-quorum-initial-group-size", 3)
+                .deadLetterExchange("pagamentos.dlx")
                 .build();
     }
 
@@ -36,6 +39,7 @@ public class PedidoAMQPConfiguration {
                 .durable("pagamento.aguardado-pedido")
                 .quorum()
                 .withArgument("x-quorum-initial-group-size", 3)
+                .deadLetterExchange("pagamentos.dlx")
                 .build();
     }
 
@@ -59,14 +63,62 @@ public class PedidoAMQPConfiguration {
         return BindingBuilder.bind(aguardandoPagamentoPedidoQueue).to(directExchangePagamento).with("pagamento.aguardado-pedido");
     }
 
+    //DLQs
+    @Bean
+    public Queue pagamentoAprovadoPedidoDLQ() {
+        return QueueBuilder
+                .durable("pagamento-aprovado-pedido.dlq")
+                .build();
+    }
+
+    @Bean
+    public Queue pagamentoAguardadoPedidoDLQ() {
+        return QueueBuilder
+                .durable("pagamento-aguardado-pedido.dlq")
+                .build();
+    }
+
+    @Bean
+    public Queue pagamentoRecusadoPedidoDLQ() {
+        return QueueBuilder
+                .durable("pagamento-recusado-pedido.dlq")
+                .build();
+    }
+
+    //DLX
+    @Bean
+    public DirectExchange dlxPagamento() {
+        return ExchangeBuilder.directExchange("pagamentos.dlx").build();
+    }
+
+    //Bindings - DLX e DLQs
+    @Bean
+    public Binding bindingPagamentoAprovadoDLQ(Queue pagamentoAprovadoPedidoDLQ, DirectExchange dlxPagamento) {
+        return BindingBuilder.bind(pagamentoAprovadoPedidoDLQ).to(dlxPagamento).with("pagamento.aprovado-pedido");
+    }
+
+    @Bean
+    public Binding bindingPagamentoAguardadoDLQ(Queue pagamentoAguardadoPedidoDLQ, DirectExchange dlxPagamento) {
+        return BindingBuilder.bind(pagamentoAguardadoPedidoDLQ).to(dlxPagamento).with("pagamento.aguardado-pedido");
+    }
+
+    @Bean
+    public Binding bindingPagamentoRecusadoDLQ(Queue pagamentoRecusadoPedidoDLQ, DirectExchange dlxPagamento) {
+        return BindingBuilder.bind(pagamentoRecusadoPedidoDLQ).to(dlxPagamento).with("pagamento.recusado-pedido");
+    }
+
     @Bean
     public JacksonJsonMessageConverter jacksonJsonMessageConverter() {
         return new JacksonJsonMessageConverter();
     }
 
+    //Injetando as configurações do retry manualmente
     @Bean
-    public SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(ConnectionFactory connectionFactory, JacksonJsonMessageConverter jacksonJsonMessageConverter) {
+    public SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(ConnectionFactory connectionFactory,
+                                                                               JacksonJsonMessageConverter jacksonJsonMessageConverter,
+                                                                               SimpleRabbitListenerContainerFactoryConfigurer configurer) {
         SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
+        configurer.configure(factory, connectionFactory);
         factory.setConnectionFactory(connectionFactory);
         factory.setMessageConverter(jacksonJsonMessageConverter);
         return factory;
