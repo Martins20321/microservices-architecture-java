@@ -121,6 +121,7 @@ public class PedidoAMQPConfiguration {
         configurer.configure(factory, connectionFactory);
         factory.setConnectionFactory(connectionFactory);
         factory.setMessageConverter(jacksonJsonMessageConverter);
+        factory.setAcknowledgeMode(AcknowledgeMode.MANUAL);
         return factory;
     }
 
