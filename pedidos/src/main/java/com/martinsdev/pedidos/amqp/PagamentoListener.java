@@ -4,7 +4,6 @@ import com.martinsdev.pedidos.dto.PedidoResponseDTO;
 import com.martinsdev.pedidos.event.PagamentoConcluidoEvent;
 import com.martinsdev.pedidos.event.PagamentoCriadoEvent;
 import com.martinsdev.pedidos.event.PagamentoRecusadoEvent;
-import com.martinsdev.pedidos.model.Pedido;
 import com.martinsdev.pedidos.model.enums.StatusPedido;
 import com.martinsdev.pedidos.service.PedidoService;
 import com.rabbitmq.client.Channel;
@@ -26,7 +25,9 @@ public class PagamentoListener {
     @RabbitListener(queues = "pagamento.aprovado-pedido")
     public void receiveAprovado(@Payload PagamentoConcluidoEvent pagamentoConcluido,
                                 Channel channel,
-                                @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) throws IOException {
+                                @Header(AmqpHeaders.DELIVERY_TAG) Long deliveryTag) throws IOException {
+
+        //Acknowledge Manual
         PedidoResponseDTO pedido = pedidoService.buscarPorId(pagamentoConcluido.pedidoId());
 
         if (pedido.status().equals(StatusPedido.CONFIRMADO)){
@@ -43,8 +44,18 @@ public class PagamentoListener {
     }
 
     @RabbitListener(queues = "pagamento.recusado-pedido")
-    public void receiveRecusado(@Payload PagamentoRecusadoEvent pagamentoRecusado) {
+    public void receiveRecusado(@Payload PagamentoRecusadoEvent pagamentoRecusado,
+                                Channel channel,
+                                @Header(AmqpHeaders.DELIVERY_TAG) Long deliveryTag) throws IOException {
+        PedidoResponseDTO pedido = pedidoService.buscarPorId(pagamentoRecusado.pedidoId());
+
+        if (pedido.status().equals(StatusPedido.CANCELADO)){
+            channel.basicAck(deliveryTag, false);
+            return;
+        }
+
         pedidoService.recusarPagamento(pagamentoRecusado.pedidoId());
+        channel.basicAck(deliveryTag, false);
 
         String message = "Pagamento Recusado para o pedido com id: " + pagamentoRecusado.pedidoId();
         System.out.println(message);
