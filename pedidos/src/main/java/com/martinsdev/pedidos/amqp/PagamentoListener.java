@@ -62,8 +62,18 @@ public class PagamentoListener {
     }
 
     @RabbitListener(queues = "pagamento.aguardado-pedido")
-    public void receiveAguardado(@Payload PagamentoCriadoEvent pagamentoCriado) {
-        pedidoService.aguardarPagamento(pagamentoCriado.pedidoId());
+    public void receiveAguardado(@Payload PagamentoCriadoEvent pagamentoCriado,
+                                 Channel channel,
+                                 @Header(AmqpHeaders.DELIVERY_TAG) Long deliveryTag) throws IOException {
+        PedidoResponseDTO pedido = pedidoService.buscarPorId(pagamentoCriado.pedidoId());
+
+        if (pedido.status().equals(StatusPedido.AGUARDANDO_CONFIRMAR_PAGAMENTO)){
+            channel.basicAck(deliveryTag, false);
+            return;
+        }
+
+        pedidoService.aguardarPagamento(pagamentoCriado.pedidoId()); //Processa primeiro e confirma depois
+        channel.basicAck(deliveryTag, false);
 
         String message = "Pagamento criado para o pedido com id: " + pagamentoCriado.pedidoId()
                 + " e o status atualizado para confirmar pagamento";
