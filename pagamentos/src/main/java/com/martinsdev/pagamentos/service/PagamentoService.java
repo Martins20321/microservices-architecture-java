@@ -18,6 +18,7 @@ import com.martinsdev.pagamentos.repository.PagamentoRepository;
 import feign.FeignException;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
+import org.springframework.amqp.rabbit.connection.CorrelationData;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -26,6 +27,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -88,7 +90,8 @@ public class PagamentoService {
 
         repository.save(pagamento);
         //Passando já com o JacksonConveter, com exchange e a routing key
-        rabbitTemplate.convertAndSend("pagamentos.ex", "pagamento.aprovado-pedido", new PagamentoConcluidoEvent(pagamento.getPedidoId()));
+        CorrelationData correlationData = new CorrelationData(UUID.randomUUID().toString());
+        rabbitTemplate.convertAndSend("pagamentos.ex", "pagamento.aprovado-pedido", new PagamentoConcluidoEvent(pagamento.getPedidoId()), correlationData);
 
         return new PagamentoResponseDTO(pagamento);
     }
