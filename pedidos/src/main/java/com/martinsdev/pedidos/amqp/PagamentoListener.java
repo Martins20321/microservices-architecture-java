@@ -8,6 +8,8 @@ import com.martinsdev.pedidos.model.enums.StatusPedido;
 import com.martinsdev.pedidos.service.PedidoService;
 import com.rabbitmq.client.Channel;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.support.AmqpHeaders;
 import org.springframework.messaging.handler.annotation.Header;
@@ -21,6 +23,7 @@ import java.io.IOException;
 public class PagamentoListener {
 
     private final PedidoService pedidoService;
+    private static final Logger log = LoggerFactory.getLogger(PagamentoListener.class);
 
     @RabbitListener(queues = "pagamento.aprovado-pedido")
     public void receiveAprovado(@Payload PagamentoConcluidoEvent pagamentoConcluido,
@@ -39,8 +42,7 @@ public class PagamentoListener {
         channel.basicAck(deliveryTag, false); //Confirma a mensagem e não trabalha com múlti acks
 
         //Consumindo a mensagem
-        String message = "Pagamento aprovado para o pedido com id: " + pagamentoConcluido.pedidoId();
-        System.out.println(message);
+        log.info("Pagamento aprovado para o pedido com id: {}", pagamentoConcluido.pedidoId());
     }
 
     @RabbitListener(queues = "pagamento.recusado-pedido")
@@ -57,8 +59,7 @@ public class PagamentoListener {
         pedidoService.recusarPagamento(pagamentoRecusado.pedidoId());
         channel.basicAck(deliveryTag, false);
 
-        String message = "Pagamento Recusado para o pedido com id: " + pagamentoRecusado.pedidoId();
-        System.out.println(message);
+        log.info("Pagamento Recusado para o pedido com id: {}", pagamentoRecusado.pedidoId());
     }
 
     @RabbitListener(queues = "pagamento.aguardado-pedido")
@@ -75,8 +76,7 @@ public class PagamentoListener {
         pedidoService.aguardarPagamento(pagamentoCriado.pedidoId()); //Processa primeiro e confirma depois
         channel.basicAck(deliveryTag, false);
 
-        String message = "Pagamento criado para o pedido com id: " + pagamentoCriado.pedidoId()
-                + " e o status atualizado para confirmar pagamento";
-        System.out.println(message);
+        log.info("Pagamento criado para o pedido com id: {} " +
+                "e o status atualizado para confirmar pagamento", pagamentoCriado.pedidoId());
     }
 }
