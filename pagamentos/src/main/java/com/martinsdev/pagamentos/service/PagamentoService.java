@@ -74,7 +74,10 @@ public class PagamentoService {
                     .build();
 
             repository.save(pagamento);
-            rabbitTemplate.convertAndSend("pagamentos.ex", "pagamento.aguardado-pedido", new PagamentoCriadoEvent(pagamentoDTO.pedidoId()));
+
+            //Utilizando o Publisher Confirms
+            CorrelationData correlationData = new CorrelationData(UUID.randomUUID().toString());
+            rabbitTemplate.convertAndSend("pagamentos.ex", "pagamento.aguardado-pedido", new PagamentoCriadoEvent(pagamentoDTO.pedidoId()), correlationData);
 
             return new PagamentoResponseDTO(pagamento);
         } catch (FeignException.NotFound e) {
