@@ -42,6 +42,15 @@ public class PagamentoAMQPConfiguration {
                 log.warn("[CONFIRM] Falha ao entregar a mensagem à Exchange! ID {} - Motivo: {}", correlationData.getId(), cause);
             }
             });
+
+        //Informa explicitamente para avisar uma falha de roteamento
+        rabbitTemplate.setMandatory(true);
+        //Dispara quando uma mensagem chega na exchange e não consegue ser roteada para uma queue
+        rabbitTemplate.setReturnsCallback(returned -> {
+            log.warn("A mensagem da Exchange({}) não conseguiu ser roteada para uma Queue! " +
+                            "Erro informado: {} - Routing Key utilizada: {}",
+                    returned.getExchange(), returned.getReplyText(), returned.getRoutingKey());
+        });
             return rabbitTemplate;
         }
 
