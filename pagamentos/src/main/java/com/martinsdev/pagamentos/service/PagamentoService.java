@@ -103,7 +103,9 @@ public class PagamentoService {
         pagamento.setDataAtualizacao(LocalDateTime.now());
 
         repository.save(pagamento);
-        rabbitTemplate.convertAndSend("pagamentos.ex", "pagamento.recusado-pedido", new PagamentoRecusadoEvent(pagamento.getPedidoId()));
+
+        CorrelationData correlationData = new CorrelationData(UUID.randomUUID().toString());
+        rabbitTemplate.convertAndSend("pagamentos.ex", "pagamento.recusado-pedido", new PagamentoRecusadoEvent(pagamento.getPedidoId()), correlationData);
 
         return new PagamentoResponseDTO(pagamento);
     }
