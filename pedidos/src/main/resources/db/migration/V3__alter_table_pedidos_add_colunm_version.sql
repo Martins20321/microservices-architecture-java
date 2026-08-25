@@ -1,0 +1,1 @@
+ALTER TABLE tb_pedidos add column version integer NOT NULL DEFAULT 0;

@@ -34,4 +34,8 @@ public class Pedido {
 
     @OneToMany(mappedBy = "pedido", fetch = FetchType.EAGER, cascade = CascadeType.ALL)
     private List<ItemPedido> itens;
+
+    //Lock Otimista
+    @Version
+    private Integer version;
 }
