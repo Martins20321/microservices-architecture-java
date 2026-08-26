@@ -140,6 +140,14 @@ A notificação de status entre `pagamentos-ms` e `pedidos-ms` é feita via even
 - **Retry com backoff exponencial** (3 tentativas, intervalo crescente) antes de uma mensagem ser considerada definitivamente falha
 - Eventos carregam apenas os dados estritamente necessários (ex: `pedidoId`) — o tipo de ação é definido pela fila/routing key, não pelo conteúdo da mensagem
 
+
+#### Garantias de consistência e tolerância a falhas
+
+- **Idempotência via Ack Manual**: cada consumer confirma o processamento manualmente, só após validar que a ação de negócio não foi previamente executada — protege contra reentrega de mensagens (`redelivered`)
+- **Publisher Confirms + Returns**: o producer recebe confirmação assíncrona de que a mensagem chegou ao Exchange (`Confirm`) e é alertado caso ela não seja roteada a nenhuma fila (`Return`), com rastreabilidade via `CorrelationData`
+- **Lock Otimista (`@Version`)** na entidade `Pedido`, protegendo contra race conditions entre consumers concorrentes
+- **Escalonamento dinâmico de consumers** (1 a 3 por fila), aumentando o throughput de processamento sob demanda
+
 Essa migração eliminou os antigos status `APROVADO_SEM_INTEGRACAO`/`RECUSADO_SEM_INTEGRACAO`, que existiam apenas como fallback do Circuit Breaker para falhas na comunicação síncrona de notificação — problema que a mensageria resolve estruturalmente.
 
 ### Consistência Distribuída
