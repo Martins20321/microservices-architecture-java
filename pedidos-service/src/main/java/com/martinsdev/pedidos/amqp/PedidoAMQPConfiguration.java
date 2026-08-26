@@ -50,12 +50,12 @@ public class PedidoAMQPConfiguration {
 
     @Bean
     public Binding bindingPagamentoAprovado(Queue pagamentoAprovadoPedidoQueue, DirectExchange directExchangePagamento) {
-        return BindingBuilder.bind(pagamentoAprovadoPedidoQueue).to(directExchangePagamento).with("pagamento.aprovado-pedido");
+        return BindingBuilder.bind(pagamentoAprovadoPedidoQueue).to(directExchangePagamento).with("pagamento.aprovado");
     }
 
     @Bean
     public Binding bidingPagamentoRecusado(Queue pagamentoRecusadoPedidoQueue, DirectExchange directExchangePagamento) {
-        return BindingBuilder.bind(pagamentoRecusadoPedidoQueue).to(directExchangePagamento).with("pagamento.recusado-pedido");
+        return BindingBuilder.bind(pagamentoRecusadoPedidoQueue).to(directExchangePagamento).with("pagamento.recusado");
     }
 
     @Bean
@@ -94,7 +94,7 @@ public class PedidoAMQPConfiguration {
     //Bindings - DLX e DLQs
     @Bean
     public Binding bindingPagamentoAprovadoDLQ(Queue pagamentoAprovadoPedidoDLQ, DirectExchange dlxPagamento) {
-        return BindingBuilder.bind(pagamentoAprovadoPedidoDLQ).to(dlxPagamento).with("pagamento.aprovado-pedido");
+        return BindingBuilder.bind(pagamentoAprovadoPedidoDLQ).to(dlxPagamento).with("pagamento.aprovado");
     }
 
     @Bean
@@ -104,7 +104,7 @@ public class PedidoAMQPConfiguration {
 
     @Bean
     public Binding bindingPagamentoRecusadoDLQ(Queue pagamentoRecusadoPedidoDLQ, DirectExchange dlxPagamento) {
-        return BindingBuilder.bind(pagamentoRecusadoPedidoDLQ).to(dlxPagamento).with("pagamento.recusado-pedido");
+        return BindingBuilder.bind(pagamentoRecusadoPedidoDLQ).to(dlxPagamento).with("pagamento.recusado");
     }
 
     @Bean
