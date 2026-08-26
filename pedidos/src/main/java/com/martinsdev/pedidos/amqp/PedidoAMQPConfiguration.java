@@ -122,6 +122,10 @@ public class PedidoAMQPConfiguration {
         factory.setConnectionFactory(connectionFactory);
         factory.setMessageConverter(jacksonJsonMessageConverter);
         factory.setAcknowledgeMode(AcknowledgeMode.MANUAL);
+
+        //concurrent consumers
+        factory.setConcurrentConsumers(1); //Minimo de consumers ativos
+        factory.setMaxConcurrentConsumers(3); //escala dinamicamente
         return factory;
     }
 
