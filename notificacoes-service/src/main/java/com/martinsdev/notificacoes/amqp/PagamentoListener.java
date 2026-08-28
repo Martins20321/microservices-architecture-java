@@ -2,6 +2,7 @@ package com.martinsdev.notificacoes.amqp;
 
 import com.martinsdev.notificacoes.dto.PedidoDTO;
 import com.martinsdev.notificacoes.event.PagamentoConcluidoEvent;
+import com.martinsdev.notificacoes.event.PagamentoRecusadoEvent;
 import com.martinsdev.notificacoes.infra.client.PedidoClient;
 import com.rabbitmq.client.Channel;
 import lombok.RequiredArgsConstructor;
@@ -24,7 +25,7 @@ public class PagamentoListener {
     private static final Logger log = LoggerFactory.getLogger(PagamentoListener.class);
     private final PedidoClient pedidoClient;
 
-    @RabbitListener(queues = "pagamento.aprovado-notificacao", containerFactory = "simpleRabbitListenerFactory")
+    @RabbitListener(queues = "pagamento.aprovado-notificacao", containerFactory = "simpleRabbitListenerContainerFactory")
     public void receivePagamentoAprovado(@Payload PagamentoConcluidoEvent pagamentoConcluidoEvent,
                                          Channel channel,
                                          @Header(AmqpHeaders.DELIVERY_TAG) Long deliveryTag) throws IOException {
@@ -36,7 +37,8 @@ public class PagamentoListener {
         String itensFormatados = pedido.itens().stream().map(item -> " - "
                 + item.descricao() + "\n"
                 + " - Quantidade: " + item.quantidade() + "\n"
-                + " - R$ " + item.valor()).collect(Collectors.joining("\n"));
+                + " - Valor: R$ " + item.valor())
+                .collect(Collectors.joining("\n"));
 
         log.info("""
                 Assunto: Pagamento confirmado - Pedido #{}
@@ -54,6 +56,38 @@ public class PagamentoListener {
                 
                         Atenciosamente,
                         Equipe de Atendimento
+                """, pedido.id(), pedido.id(), pedido.dataCriacao(), itensFormatados);
+        channel.basicAck(deliveryTag, false);
+    }
+
+    @RabbitListener(queues = "pagamento.recusado-notificacao", containerFactory = "simpleRabbitListenerContainerFactory")
+    public void receivePagamentoRecusado(@Payload PagamentoRecusadoEvent pagamentoRecusado,
+                                         Channel channel,
+                                         @Header(AmqpHeaders.DELIVERY_TAG) Long deliveryTag) throws IOException {
+        PedidoDTO pedido = pedidoClient.buscarPedido(pagamentoRecusado.pedidoId());
+
+        String itensFormatados = pedido.itens().stream().map(item -> " - "
+                + item.descricao() + "\n"
+                + " - Quantidade: " + item.quantidade() + "\n"
+                + " - Valor: R$ " + item.valor())
+                .collect(Collectors.joining("\n"));
+
+        log.info("""
+                Assunto: Pagamento não aprovado - Pedido #{}
+                
+                Prezado(a) cliente,
+                
+                Informamos que não foi possível confirmar o pagamento referente ao seu pedido #{}, realizado em {}.
+                
+                Itens do pedido:
+                {}
+                
+                
+                O pedido foi cancelado em decorrência da recusa do pagamento. 
+                Caso deseje refazer a compra, entre em contato com nossa equipe ou tente novamente através de nossos canais oficiais.
+                
+                Atenciosamente,
+                Equipe de Atendimento
                 """, pedido.id(), pedido.id(), pedido.dataCriacao(), itensFormatados);
         channel.basicAck(deliveryTag, false);
     }
