@@ -70,7 +70,7 @@ public class PagamentoListener {
                 """,pedido.id(), dataFormatada, itensFormatados));
 
         mailSender.send(mailMessage);
-        channel.basicAck(deliveryTag, false);
+        channel.basicAck(deliveryTag, false); //Só confirma a mensagem depois do envio da mensagem
 
         log.info("[CONFIRM] Email enviado com sucesso referente ao pedido: " + pedido.id());
     }
@@ -81,29 +81,36 @@ public class PagamentoListener {
                                          @Header(AmqpHeaders.DELIVERY_TAG) Long deliveryTag) throws IOException {
         PedidoDTO pedido = pedidoClient.buscarPedido(pagamentoRecusado.pedidoId());
 
-        String itensFormatados = pedido.itens().stream().map(item -> " - "
-                        + item.descricao() + "\n"
+        String itensFormatados = pedido.itens().stream().map(item ->
+                        " - Item: " + item.descricao() + "\n"
                         + " - Quantidade: " + item.quantidade() + "\n"
                         + " - Valor: R$ " + item.valor())
                 .collect(Collectors.joining("\n"));
 
-        log.info("""
-                Assunto: Pagamento não aprovado - Pedido #{}
-                
+        String dataFormatada = pedido.dataCriacao().format(DateTimeFormatter.ofPattern("dd/MM/yyyy 'às' HH:mm:ss"));
+
+        SimpleMailMessage mailMessage = new SimpleMailMessage();
+        mailMessage.setTo(destinatario);
+        mailMessage.setSubject("Pagamento não aprovado - Pedido #" + pedido.id());
+        mailMessage.setText(String.format("""
                 Prezado(a) cliente,
                 
-                Informamos que não foi possível confirmar o pagamento referente ao seu pedido #{}, realizado em {}.
+                Informamos que não foi possível confirmar o pagamento referente ao seu pedido #%d, realizado em %s.
                 
                 Itens do pedido:
-                {}
+                %s
                 
                 
-                O pedido foi cancelado em decorrência da recusa do pagamento. 
+                O pedido foi cancelado em decorrência da recusa do pagamento.
                 Caso deseje refazer a compra, entre em contato com nossa equipe ou tente novamente através de nossos canais oficiais.
                 
                 Atenciosamente,
                 Equipe de Atendimento
-                """, pedido.id(), pedido.id(), pedido.dataCriacao(), itensFormatados);
-        channel.basicAck(deliveryTag, false);
+                """, pedido.id(), dataFormatada, itensFormatados));
+
+        mailSender.send(mailMessage);
+        channel.basicAck(deliveryTag, false); //Só confirma a mensagem depois do envio da mensagem
+
+        log.info("[CONFIRM] Email de recusado enviado com sucesso referente ao pedido: " + pedido.id());
     }
 }
