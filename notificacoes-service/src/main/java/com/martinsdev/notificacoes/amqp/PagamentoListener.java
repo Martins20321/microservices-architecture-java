@@ -10,11 +10,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.support.AmqpHeaders;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.time.format.DateTimeFormatter;
 import java.util.stream.Collectors;
 
 
@@ -24,6 +28,10 @@ public class PagamentoListener {
 
     private static final Logger log = LoggerFactory.getLogger(PagamentoListener.class);
     private final PedidoClient pedidoClient;
+    private final JavaMailSender mailSender;
+
+    @Value("${spring.mail.username}")
+    private String destinatario; //Fixo por enquanto, iremos adicionar autenticacao
 
     @RabbitListener(queues = "pagamento.aprovado-notificacao", containerFactory = "simpleRabbitListenerContainerFactory")
     public void receivePagamentoAprovado(@Payload PagamentoConcluidoEvent pagamentoConcluidoEvent,
@@ -34,21 +42,24 @@ public class PagamentoListener {
         PedidoDTO pedido = pedidoClient.buscarPedido(pagamentoConcluidoEvent.pedidoId());
 
         //iterando e já formatando os pedidos
-        String itensFormatados = pedido.itens().stream().map(item -> " - "
-                + item.descricao() + "\n"
-                + " - Quantidade: " + item.quantidade() + "\n"
-                + " - Valor: R$ " + item.valor())
+        String itensFormatados = pedido.itens().stream().map(item ->
+                        " - Item: " + item.descricao() + "\n"
+                        + " - Quantidade: " + item.quantidade() + "\n"
+                        + " - Valor: R$ " + item.valor())
                 .collect(Collectors.joining("\n"));
 
-        log.info("""
-                Assunto: Pagamento confirmado - Pedido #{}
-                
+        String dataFormatada = pedido.dataCriacao().format(DateTimeFormatter.ofPattern("dd/MM/yyyy 'às' HH:mm:ss"));
+
+        SimpleMailMessage mailMessage = new SimpleMailMessage();
+        mailMessage.setTo(destinatario);
+        mailMessage.setSubject("Pagamento confirmado - Pedido #" + pedido.id());
+        mailMessage.setText(String.format("""
                         Prezado(a) cliente,
                 
-                        Informamos que o pagamento referente ao seu pedido #{}, realizado em {}, foi aprovado com sucesso.
+                        Informamos que o pagamento referente ao seu pedido #%d, realizado %s, foi aprovado com sucesso.
                 
                         Itens do pedido:
-                        {}
+                        %s
                 
                         Seu pedido está confirmado e seguirá para as próximas etapas de processamento.
                 
@@ -56,8 +67,12 @@ public class PagamentoListener {
                 
                         Atenciosamente,
                         Equipe de Atendimento
-                """, pedido.id(), pedido.id(), pedido.dataCriacao(), itensFormatados);
+                """,pedido.id(), dataFormatada, itensFormatados));
+
+        mailSender.send(mailMessage);
         channel.basicAck(deliveryTag, false);
+
+        log.info("[CONFIRM] Email enviado com sucesso referente ao pedido: " + pedido.id());
     }
 
     @RabbitListener(queues = "pagamento.recusado-notificacao", containerFactory = "simpleRabbitListenerContainerFactory")
@@ -67,9 +82,9 @@ public class PagamentoListener {
         PedidoDTO pedido = pedidoClient.buscarPedido(pagamentoRecusado.pedidoId());
 
         String itensFormatados = pedido.itens().stream().map(item -> " - "
-                + item.descricao() + "\n"
-                + " - Quantidade: " + item.quantidade() + "\n"
-                + " - Valor: R$ " + item.valor())
+                        + item.descricao() + "\n"
+                        + " - Quantidade: " + item.quantidade() + "\n"
+                        + " - Valor: R$ " + item.valor())
                 .collect(Collectors.joining("\n"));
 
         log.info("""
