@@ -141,6 +141,8 @@ A notificação de status entre `pagamentos-service` e `pedidos-service` é feit
 - **Dead Letter Exchange (DLX) + Dead Letter Queue (DLQ)** por fila, para mensagens que falham no processamento
 - **Retry com backoff exponencial** (3 tentativas, intervalo crescente) antes de uma mensagem ser considerada definitivamente falha
 - Eventos carregam apenas os dados estritamente necessários (ex: `pedidoId`) — o tipo de ação é definido pela fila/routing key, não pelo conteúdo da mensagem
+<img width="601" height="411" alt="image" src="https://github.com/user-attachments/assets/be534b8e-b36e-4b55-ab5d-99026e41ffb7" />
+
 
 #### Multi-consumer com Exchange Direct
 
