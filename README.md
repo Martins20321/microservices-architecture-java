@@ -21,17 +21,17 @@ Sistema de **Pedidos e Pagamentos** composto por microsserviços independentes q
 
 <img width="1234" height="524" alt="DiagramaAWS drawio" src="https://github.com/user-attachments/assets/ec25131d-7e59-474e-b3bd-b304be6f9ed8" />
 
-> ⚠️ Diagramas em atualização para refletir a comunicação via RabbitMQ e um novo microsserviço em desenvolvimento.
+> ⚠️ Diagramas em atualização; Ainda não refletem a arquitetura de mensageria com RabbitMQ nem o `notificacoes-service`. Serão redesenhados após a conclusão das próximas etapas do roadmap (`estoque-service`, observabilidade).
 
 ### Fluxo principal
 
-1. Cliente cria um pedido via `pedidos-ms`
-2. Cliente cria um pagamento via `pagamentos-ms`, que consulta o pedido via OpenFeign (síncrono)
-3. `pagamentos-ms` publica um evento `pagamento.aguardado-pedido` no RabbitMQ; `pedidos-ms` consome e atualiza o pedido para **AGUARDANDO_CONFIRMAR_PAGAMENTO**
-4. Ao aprovar o pagamento, `pagamentos-ms` publica `pagamento.aprovado-pedido`; `pedidos-ms` consome e confirma o pedido
-5. Ao recusar o pagamento, `pagamentos-ms` publica `pagamento.recusado-pedido`; `pedidos-ms` consome e cancela o pedido
+1. Cliente cria um pedido via `pedidos-service`
+2. Cliente cria um pagamento via `pagamentos-service`, que consulta o pedido via OpenFeign (síncrono)
+3. `pagamentos-service` publica um evento `pagamento.aguardado-pedido` no RabbitMQ; `pedidos-service` consome e atualiza o pedido para **AGUARDANDO_CONFIRMAR_PAGAMENTO**
+4. Ao aprovar o pagamento, `pagamentos-service` publica `pagamento.aprovado` na Exchange direct (`pagamentos.ex`), roteado simultaneamente para dois consumers: `pedidos-service` (confirma o pedido) e `notificacoes-service` (busca os dados do pedido via Feign e envia e-mail de confirmação ao cliente)
+5. Ao recusar o pagamento, `pagamentos-service` publica `pagamento.recusado`, roteado da mesma forma: `pedidos-service` (cancela o pedido) e `notificacoes-service` (envia e-mail de recusa ao cliente)
 
-> A notificação de status entre `pagamentos-ms` e `pedidos-ms` é 100% assíncrona via RabbitMQ; A única comunicação síncrona remanescente é a consulta de dados do pedido no momento da criação do pagamento.
+> A notificação de status entre `pagamentos-service` e `pedidos-service` é 100% assíncrona via RabbitMQ. As comunicações síncronas remanescentes são: a consulta de dados do pedido no momento da criação do pagamento (`pagamentos-service` → `pedidos-service`), e a consulta de detalhes do pedido para montagem do e-mail (`notificacoes-service` → `pedidos-service`).
 
 ---
 
@@ -41,8 +41,9 @@ Sistema de **Pedidos e Pagamentos** composto por microsserviços independentes q
 - **Java 17**
 - **Spring Boot 4.0.7**
 - **Spring Cloud 2025.0.0**
-- **Spring Data JPA** (pedidos-ms)
-- **Spring Data MongoDB** (pagamentos-ms)
+- **Spring Data JPA** (pedidos-service)
+- **Spring Data MongoDB** (pagamentos-service)
+- **Spring Mail (JavaMailSender)** — envio de notificações por e-mail via SMTP
 - **Flyway** (migrations do PostgreSQL)
 
 ### Microsserviços & Cloud
@@ -59,7 +60,7 @@ Sistema de **Pedidos e Pagamentos** composto por microsserviços independentes q
 ### Infraestrutura (AWS)
 - **AWS CDK (Java)** — Infraestrutura como Código
 - **Amazon ECS + Fargate** — orquestração de containers sem servidor
-- **Amazon RDS (PostgreSQL)** — banco gerenciado para pedidos-ms
+- **Amazon RDS (PostgreSQL)** — banco gerenciado para pedidos-service
 - **Amazon DocumentDB** — banco gerenciado compatível com MongoDB para pagamentos-ms
 - **Application Load Balancer** — ponto de entrada e balanceamento de carga
 - **Amazon ECR** — registry privado de imagens Docker
@@ -76,26 +77,27 @@ Sistema de **Pedidos e Pagamentos** composto por microsserviços independentes q
 
 ```
 microservices-architecture-java/
-├── pedidos/          # MS de Pedidos (PostgreSQL)
-├── pagamentos/       # MS de Pagamentos (MongoDB)
-├── discovery/        # Eureka Server (ambiente local)
-├── gateway/          # Spring Cloud Gateway (ambiente local)
-└── infra/            # Infraestrutura AWS via CDK
+├── pedidos-service/          # MS de Pedidos (PostgreSQL)
+├── pagamentos-service/       # MS de Pagamentos (MongoDB)
+├── notificacoes-service/     # MS de Notificações (RabbitMQ + Feign + SMTP)
+├── discovery/                # Eureka Server (ambiente local)
+├── gateway/                  # Spring Cloud Gateway (ambiente local)
+└── infra/                    # Infraestrutura AWS via CDK
     ├── InfraApp.java           # Ponto de entrada — registra e envia as Stacks para a AWS
     ├── InfraStack.java         # Modelo base padrão para criação de Stacks
     ├── VpcStack.java           # Rede — VPC, subnets públicas/privadas, IGW e NAT
     ├── ClusterStack.java       # ECS Cluster — agrupamento lógico dos containers
-    ├── RdsStack.java           # Banco relacional — RDS PostgreSQL para pedidos-ms
-    ├── DocumentDbStack.java    # Banco de documentos — DocumentDB para pagamentos-ms
-    ├── PedidosServiceStack.java    # ECS Fargate + ALB + Auto Scaling do pedidos-ms
-    └── PagamentosServiceStack.java # ECS Fargate + ALB + Auto Scaling do pagamentos-ms
+    ├── RdsStack.java           # Banco relacional — RDS PostgreSQL para pedidos-service
+    ├── DocumentDbStack.java    # Banco de documentos — DocumentDB para pagamentos-service
+    ├── PedidosServiceStack.java    # ECS Fargate + ALB + Auto Scaling do pedidos-service
+    └── PagamentosServiceStack.java # ECS Fargate + ALB + Auto Scaling do pagamentos-service
 ```
 
 ---
 
 ## 🔌 Endpoints
 
-### pedidos-ms
+### pedidos-service
 
 | Método | Endpoint | Descrição |
 |--------|----------|-----------|
@@ -107,7 +109,7 @@ microservices-architecture-java/
 
 > A confirmação e o cancelamento de pedido decorrentes de pagamento não são feitos via endpoint — acontecem automaticamente pelo consumo dos eventos do RabbitMQ.
 
-### pagamentos-ms
+### pagamentos-service
 
 | Método | Endpoint | Descrição |
 |--------|----------|-----------|
@@ -119,7 +121,7 @@ microservices-architecture-java/
 | PATCH | `/v1/pagamentos/{id}/cancelar` | Cancelar pagamento |
 
 > Localmente todos os endpoints são acessíveis via Gateway na porta **8081**
-> Exemplo: `http://localhost:8081/pedidos-ms/v1/pedidos`
+> Exemplo: `http://localhost:8081/pedidos-service/v1/pedidos`
 
 ---
 
@@ -133,13 +135,21 @@ Implementado com **Resilience4j** na comunicação síncrona restante (`buscarPe
 - `criarPagamento` → retorna **503 Service Unavailable**
 
 ### Mensageria Assíncrona (RabbitMQ)
-A notificação de status entre `pagamentos-ms` e `pedidos-ms` é feita via eventos publicados em um **Exchange direct** (`pagamentos.ex`), consumidos por filas dedicadas:
+A notificação de status entre `pagamentos-service` e `pedidos-service` é feita via eventos publicados em um **Exchange direct** (`pagamentos.ex`), consumidos por filas dedicadas:
 
 - **Filas Quorum**, replicadas entre nós do cluster para alta disponibilidade
 - **Dead Letter Exchange (DLX) + Dead Letter Queue (DLQ)** por fila, para mensagens que falham no processamento
 - **Retry com backoff exponencial** (3 tentativas, intervalo crescente) antes de uma mensagem ser considerada definitivamente falha
 - Eventos carregam apenas os dados estritamente necessários (ex: `pedidoId`) — o tipo de ação é definido pela fila/routing key, não pelo conteúdo da mensagem
 
+#### Multi-consumer com Exchange Direct
+
+O exchange `pagamentos.ex` roteia os eventos de aprovação/recusa de pagamento para **dois consumers independentes** através de bindings com a mesma routing key:
+
+- `pedidos-service` — atualiza o status do pedido
+- `notificacoes-service` — envia e-mail de confirmação/recusa ao cliente, buscando os detalhes do pedido via Feign síncrono
+
+Essa arquitetura evita o acoplamento de "enriquecer o evento" com dados que só um dos consumers usaria — cada serviço busca exatamente o que precisa, quando precisa.
 
 #### Garantias de consistência e tolerância a falhas
 
@@ -170,7 +180,7 @@ Escalonamento automático baseado em métricas:
 - RabbitMQ
 - Maven
 
-### Variáveis de ambiente (pedidos-ms)
+### Variáveis de ambiente (pedidos-service)
 ```
 SPRING_DATASOURCE_USERNAME=seu_usuario
 SPRING_DATASOURCE_PASSWORD=sua_senha
