@@ -21,7 +21,7 @@ Sistema de **Pedidos e Pagamentos** composto por microsserviços independentes q
 
 <img width="1234" height="524" alt="DiagramaAWS drawio" src="https://github.com/user-attachments/assets/ec25131d-7e59-474e-b3bd-b304be6f9ed8" />
 
-> ⚠️ Diagramas em atualização; Ainda não refletem a arquitetura de mensageria com RabbitMQ nem o `notificacoes-service`. Serão redesenhados após a conclusão das próximas etapas do roadmap (`estoque-service`, observabilidade).
+> ⚠️ Diagramas em atualização; Ainda não refletem a arquitetura de mensageria com RabbitMQ nem o `notificacoes-service`. Serão redesenhados após a conclusão das próximas etapas do roadmap (`inventario-service`, observabilidade).
 
 ### Fluxo principal
 
@@ -196,12 +196,19 @@ RABBITMQ_USERNAME=seu_usuario
 RABBITMQ_PASSWORD=sua_senha
 ```
 
+### Variáveis de ambiente (notificacoes-service — SMTP)
+```
+GMAIL_USERNAME=seu_email@gmail.com
+GMAIL_PASSWORD=sua_senha_de_app
+```
+
 ### Ordem de inicialização
 1. **discovery** — Eureka Server (`localhost:8761`)
 2. **RabbitMQ** — broker de mensageria (`localhost:5672`, management em `localhost:15672`)
-3. **pedidos** — MS de Pedidos
-4. **pagamentos** — MS de Pagamentos
-5. **gateway** — API Gateway (`localhost:8081`)
+3. **pedidos-service** — MS de Pedidos
+4. **pagamentos-service** — MS de Pagamentos
+5. **notificacoes-service** — MS de Notificações
+6. **gateway** — API Gateway (`localhost:8081`)
 
 ---
 
