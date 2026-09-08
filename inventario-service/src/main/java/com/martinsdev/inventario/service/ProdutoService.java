@@ -3,6 +3,8 @@ package com.martinsdev.inventario.service;
 import com.martinsdev.inventario.dto.ProdutoAtualizarRequestDTO;
 import com.martinsdev.inventario.dto.ProdutoCriarRequestDTO;
 import com.martinsdev.inventario.dto.ProdutoResponseDTO;
+import com.martinsdev.inventario.infra.exception.ProductAlreadyExistsException;
+import com.martinsdev.inventario.infra.exception.ResourceNotFoundException;
 import com.martinsdev.inventario.model.Produto;
 import com.martinsdev.inventario.repository.ProdutoRepository;
 import lombok.RequiredArgsConstructor;
@@ -22,13 +24,13 @@ public class ProdutoService {
 
     public ProdutoResponseDTO buscarPorId(Long id) {
         return repository.findById(id).map(ProdutoResponseDTO::new)
-                .orElseThrow(() -> new RuntimeException("")); //Exceçao personaliza a ser criada
+                .orElseThrow(() -> new ResourceNotFoundException(id));
     }
 
     public ProdutoResponseDTO criarProduto(ProdutoCriarRequestDTO produtoDTO) {
         //Verifica se o produto já existe pelo nome
         if (repository.existsByNome(produtoDTO.nome())) {
-            throw new RuntimeException(""); //Exceçao personaliza a ser criada
+            throw new ProductAlreadyExistsException("Product with name '"  + produtoDTO.nome() + "' already exists");
         }
 
         Produto produto = Produto.builder()
@@ -44,7 +46,7 @@ public class ProdutoService {
 
     public ProdutoResponseDTO atualizarProduto(Long id, ProdutoAtualizarRequestDTO produtoDTO) {
         Produto produto = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("")); //Exceçao personaliza a ser criada
+                .orElseThrow(() -> new ResourceNotFoundException(id));
 
         produto.setNome(produtoDTO.nome());
         produto.setDescricao(produtoDTO.descricao());
