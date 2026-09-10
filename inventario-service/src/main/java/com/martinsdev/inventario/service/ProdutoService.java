@@ -10,13 +10,18 @@ import com.martinsdev.inventario.repository.ProdutoRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
+
+import java.util.HashMap;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
 public class ProdutoService {
 
     private final ProdutoRepository repository;
+    private final RedisTemplate<String, Object> redisTemplate;
 
     public Page<ProdutoResponseDTO> buscarTodos(Pageable pageable) {
         return repository.findAll(pageable).map(ProdutoResponseDTO::new);
@@ -40,7 +45,16 @@ public class ProdutoService {
                 .quantidadeDisponivel(produtoDTO.quantidadeDisponivel())
                 .build();
 
+        // montando a colecao de pares campo e valor
+        Map<String, Object> camposProdutoRedis = new HashMap<>();
+        camposProdutoRedis.put("nome", produto.getNome());
+        camposProdutoRedis.put("descricao", produto.getDescricao());
+        camposProdutoRedis.put("preco", produto.getPreco());
+        camposProdutoRedis.put( "quantidadeDisponivel", produto.getQuantidadeDisponivel());
+
         repository.save(produto);
+        redisTemplate.opsForHash().putAll("produto:" + produto.getId(), camposProdutoRedis); // envia a chave com o id do branco e os campos do produto
+
         return new ProdutoResponseDTO(produto);
     }
 
