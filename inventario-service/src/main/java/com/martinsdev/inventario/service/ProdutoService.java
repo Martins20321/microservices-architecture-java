@@ -28,8 +28,29 @@ public class ProdutoService {
     }
 
     public ProdutoResponseDTO buscarPorId(Long id) {
-        return repository.findById(id).map(ProdutoResponseDTO::new)
-                .orElseThrow(() -> new ResourceNotFoundException(id));
+        Map<Object, Object> produto = redisTemplate.opsForHash().entries("produto:" + id);
+
+        if (produto.isEmpty()) { // ou nao existe ou nao esta salvo no cache
+            Produto produtoSQL = repository.findById(id)
+                    .orElseThrow(() -> new ResourceNotFoundException(id));
+
+            // salva no redis e retorna ao usuario
+            Map<String, Object> camposProdutoRedis = new HashMap<>();
+            camposProdutoRedis.put("id", produtoSQL.getId());
+            camposProdutoRedis.put("nome", produtoSQL.getNome());
+            camposProdutoRedis.put("descricao", produtoSQL.getDescricao());
+            camposProdutoRedis.put("preco", produtoSQL.getPreco());
+            camposProdutoRedis.put("quantidadeDisponivel", produtoSQL.getQuantidadeDisponivel());
+            camposProdutoRedis.put("dataCriacao", produtoSQL.getDataCriacao());
+
+            redisTemplate.opsForHash().putAll("produto:" + produtoSQL.getId(), camposProdutoRedis);
+
+            return new ProdutoResponseDTO(produtoSQL);
+        }
+
+        return new ProdutoResponseDTO(produto);
+
+        //return repository.findById(id).map(ProdutoResponseDTO::new).orElseThrow(() -> new ResourceNotFoundException(id));
     }
 
     public ProdutoResponseDTO criarProduto(ProdutoCriarRequestDTO produtoDTO) {
