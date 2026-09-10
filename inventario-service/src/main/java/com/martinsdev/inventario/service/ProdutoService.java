@@ -40,7 +40,6 @@ public class ProdutoService {
             camposProdutoRedis.put("nome", produtoSQL.getNome());
             camposProdutoRedis.put("descricao", produtoSQL.getDescricao());
             camposProdutoRedis.put("preco", produtoSQL.getPreco());
-            camposProdutoRedis.put("quantidadeDisponivel", produtoSQL.getQuantidadeDisponivel());
             camposProdutoRedis.put("dataCriacao", produtoSQL.getDataCriacao());
 
             redisTemplate.opsForHash().putAll("produto:" + produtoSQL.getId(), camposProdutoRedis);
@@ -74,7 +73,6 @@ public class ProdutoService {
         camposProdutoRedis.put("nome", produto.getNome());
         camposProdutoRedis.put("descricao", produto.getDescricao());
         camposProdutoRedis.put("preco", produto.getPreco());
-        camposProdutoRedis.put("quantidadeDisponivel", produto.getQuantidadeDisponivel());
         camposProdutoRedis.put("dataCriacao", produto.getDataCriacao());
 
         redisTemplate.opsForHash().putAll("produto:" + produto.getId(), camposProdutoRedis); // envia a chave com o id do branco e os campos do produto

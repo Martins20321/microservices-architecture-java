@@ -23,7 +23,6 @@ public record ProdutoResponseDTO(Long id,
                 (String) produto.get("nome"),
                 (String) produto.get("descricao"),
                 BigDecimal.valueOf(((Number) produto.get("preco")).doubleValue()),
-                (Integer) produto.get("quantidadeDisponivel"),
                 LocalDateTime.parse((String) produto.get("dataCriacao")));
     }
 }
