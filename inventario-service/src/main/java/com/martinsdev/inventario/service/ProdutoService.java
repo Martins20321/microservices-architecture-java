@@ -35,7 +35,7 @@ public class ProdutoService {
     public ProdutoResponseDTO criarProduto(ProdutoCriarRequestDTO produtoDTO) {
         //Verifica se o produto já existe pelo nome
         if (repository.existsByNome(produtoDTO.nome())) {
-            throw new ProductAlreadyExistsException("Product with name '"  + produtoDTO.nome() + "' already exists");
+            throw new ProductAlreadyExistsException("Product with name '" + produtoDTO.nome() + "' already exists");
         }
 
         Produto produto = Produto.builder()
@@ -45,14 +45,17 @@ public class ProdutoService {
                 .quantidadeDisponivel(produtoDTO.quantidadeDisponivel())
                 .build();
 
+        repository.save(produto);
+
         // montando a colecao de pares campo e valor
         Map<String, Object> camposProdutoRedis = new HashMap<>();
+        camposProdutoRedis.put("id", produto.getId());
         camposProdutoRedis.put("nome", produto.getNome());
         camposProdutoRedis.put("descricao", produto.getDescricao());
         camposProdutoRedis.put("preco", produto.getPreco());
-        camposProdutoRedis.put( "quantidadeDisponivel", produto.getQuantidadeDisponivel());
+        camposProdutoRedis.put("quantidadeDisponivel", produto.getQuantidadeDisponivel());
+        camposProdutoRedis.put("dataCriacao", produto.getDataCriacao());
 
-        repository.save(produto);
         redisTemplate.opsForHash().putAll("produto:" + produto.getId(), camposProdutoRedis); // envia a chave com o id do branco e os campos do produto
 
         return new ProdutoResponseDTO(produto);
