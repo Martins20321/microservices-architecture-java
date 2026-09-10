@@ -86,11 +86,16 @@ public class ProdutoService {
         Produto produto = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(id));
 
-        produto.setNome(produtoDTO.nome());
-        produto.setDescricao(produtoDTO.descricao());
-        produto.setPreco(produtoDTO.preco());
+        // verifica se o atributo veio no corpo e evita um nulo
+        if (produtoDTO.nome() != null) produto.setNome(produtoDTO.nome());
+        if (produtoDTO.descricao() != null) produto.setDescricao(produtoDTO.descricao());
+        if (produtoDTO.preco() != null) produto.setPreco(produtoDTO.preco());
 
         repository.save(produto);
+
+        // apos atualizacao, exclui a chave do redis e forca a buscar no banco com os dados atualizados
+        redisTemplate.delete("produto:" + produto.getId());
+
         return new ProdutoResponseDTO(produto);
     }
 }
