@@ -76,6 +76,7 @@ public class ProdutoService {
         camposProdutoRedis.put("dataCriacao", produto.getDataCriacao());
 
         redisTemplate.opsForHash().putAll("produto:" + produto.getId(), camposProdutoRedis); // envia a chave com o id do branco e os campos do produto
+        redisTemplate.opsForValue().set("estoque:" + produto.getId(), produto.getQuantidadeDisponivel()); // chave utilizada para armazenar a quantidade disponivel de um produto usuando operacoes atomicas (INCR/DECR)
 
         return new ProdutoResponseDTO(produto);
     }
