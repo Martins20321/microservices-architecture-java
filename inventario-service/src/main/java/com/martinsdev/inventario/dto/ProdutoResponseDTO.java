@@ -18,11 +18,12 @@ public record ProdutoResponseDTO(Long id,
     }
 
     //Utilizado pelo redis
-    public ProdutoResponseDTO(Map<Object, Object> produto) {
+    public ProdutoResponseDTO(Map<Object, Object> produto, Object quantidadeDisponivel) {
         this(((Number) produto.get("id")).longValue(),
                 (String) produto.get("nome"),
                 (String) produto.get("descricao"),
                 BigDecimal.valueOf(((Number) produto.get("preco")).doubleValue()),
+                ((Number) quantidadeDisponivel).intValue(),
                 LocalDateTime.parse((String) produto.get("dataCriacao")));
     }
 }

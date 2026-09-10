@@ -29,6 +29,7 @@ public class ProdutoService {
 
     public ProdutoResponseDTO buscarPorId(Long id) {
         Map<Object, Object> produto = redisTemplate.opsForHash().entries("produto:" + id);
+        Object quantidadeDisponivel = redisTemplate.opsForValue().get("estoque:" + id);
 
         if (produto.isEmpty()) { // ou nao existe ou nao esta salvo no cache
             Produto produtoSQL = repository.findById(id)
@@ -43,11 +44,12 @@ public class ProdutoService {
             camposProdutoRedis.put("dataCriacao", produtoSQL.getDataCriacao());
 
             redisTemplate.opsForHash().putAll("produto:" + produtoSQL.getId(), camposProdutoRedis);
+            redisTemplate.opsForValue().set("estoque:" + produtoSQL.getId(), produtoSQL.getQuantidadeDisponivel());
 
             return new ProdutoResponseDTO(produtoSQL);
         }
 
-        return new ProdutoResponseDTO(produto);
+        return new ProdutoResponseDTO(produto, quantidadeDisponivel);
 
         //return repository.findById(id).map(ProdutoResponseDTO::new).orElseThrow(() -> new ResourceNotFoundException(id));
     }
