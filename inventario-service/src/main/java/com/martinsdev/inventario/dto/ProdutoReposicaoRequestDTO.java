@@ -1,7 +1,7 @@
 package com.martinsdev.inventario.dto;
 
 import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 
-public record ProdutoReposicaoRequestDTO(@NotBlank @Min(1) Integer quantidadeReposicao) {
+public record ProdutoReposicaoRequestDTO(@NotNull @Min(1) Integer quantidadeReposicao) {
 }
