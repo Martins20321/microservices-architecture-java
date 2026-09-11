@@ -1,8 +1,6 @@
 package com.martinsdev.inventario.controller;
 
-import com.martinsdev.inventario.dto.ProdutoAtualizarRequestDTO;
-import com.martinsdev.inventario.dto.ProdutoCriarRequestDTO;
-import com.martinsdev.inventario.dto.ProdutoResponseDTO;
+import com.martinsdev.inventario.dto.*;
 import com.martinsdev.inventario.service.ProdutoService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -42,5 +40,10 @@ public class ProdutoController {
     @PatchMapping("/{id}")
     public ResponseEntity<ProdutoResponseDTO> atualizarProduto(@PathVariable Long id, @Valid @RequestBody ProdutoAtualizarRequestDTO produtoDTO) {
         return ResponseEntity.ok(service.atualizarProduto(id, produtoDTO));
+    }
+
+    @PostMapping("/{id}/reposicao")
+    public ResponseEntity<ProdutoDetailsReposicaoDTO> reposicaoProduto(@PathVariable Long id, @Valid @RequestBody ProdutoReposicaoRequestDTO reposicaoDTO) {
+        return ResponseEntity.ok(service.reposicaoProduto(id, reposicaoDTO));
     }
 }
