@@ -23,7 +23,7 @@ public class MovimentacaoEstoque {
     private Long id;
     @Column(nullable = false, name = "produto_id")
     private Long produtoId;
-    @Column(nullable = false, name = "pedido_id")
+    @Column(nullable = true, name = "pedido_id")
     private Long pedidoId;
 
     @Enumerated(EnumType.STRING)

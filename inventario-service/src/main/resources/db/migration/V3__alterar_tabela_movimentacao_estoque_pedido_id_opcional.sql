@@ -1,0 +1,1 @@
+ALTER TABLE tb_movimentacao_estoque ALTER COLUMN pedido_id DROP NOT NULL;
