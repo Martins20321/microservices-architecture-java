@@ -1,17 +1,19 @@
 package com.martinsdev.inventario.service;
 
-import com.martinsdev.inventario.dto.ProdutoAtualizarRequestDTO;
-import com.martinsdev.inventario.dto.ProdutoCriarRequestDTO;
-import com.martinsdev.inventario.dto.ProdutoResponseDTO;
+import com.martinsdev.inventario.dto.*;
 import com.martinsdev.inventario.infra.exception.ProductAlreadyExistsException;
 import com.martinsdev.inventario.infra.exception.ResourceNotFoundException;
+import com.martinsdev.inventario.model.MovimentacaoEstoque;
 import com.martinsdev.inventario.model.Produto;
+import com.martinsdev.inventario.model.enums.TipoMovimentacao;
+import com.martinsdev.inventario.repository.MovimentacaoEstoqueRepository;
 import com.martinsdev.inventario.repository.ProdutoRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -21,6 +23,7 @@ import java.util.Map;
 public class ProdutoService {
 
     private final ProdutoRepository repository;
+    private final MovimentacaoEstoqueRepository estoqueRepository;
     private final RedisTemplate<String, Object> redisTemplate;
 
     public Page<ProdutoResponseDTO> buscarTodos(Pageable pageable) {
@@ -98,5 +101,31 @@ public class ProdutoService {
         redisTemplate.delete("produto:" + produto.getId());
 
         return new ProdutoResponseDTO(produto);
+    }
+
+    @Transactional
+    public ProdutoDetailsReposicaoDTO reposicaoProduto(Long id, ProdutoReposicaoRequestDTO reposicaoDTO) {
+        Produto produto = repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(id));
+
+        // redis garantindo atomicidade e isolamento
+        Long novaQuantidade = redisTemplate.opsForValue().increment("estoque:" + produto.getId(), reposicaoDTO.quantidadeReposicao());
+        produto.setQuantidadeDisponivel(novaQuantidade.intValue()); // atualizando no banco SQL
+
+        // registrando a movimentacao no estoque
+        MovimentacaoEstoque movimentacaoEstoque = MovimentacaoEstoque.builder()
+                .produtoId(produto.getId())
+                .tipoMovimentacao(TipoMovimentacao.REPOSICAO)
+                .quantidade(reposicaoDTO.quantidadeReposicao()) // reposicao = sempre adiciona uma quantidade
+                .build();
+
+        repository.save(produto);
+        estoqueRepository.save(movimentacaoEstoque);
+
+        return new ProdutoDetailsReposicaoDTO(movimentacaoEstoque.getId(),
+                produto.getId(),
+                produto.getNome(),
+                reposicaoDTO.quantidadeReposicao(),
+                produto.getQuantidadeDisponivel());
     }
 }
