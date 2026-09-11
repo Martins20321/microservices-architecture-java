@@ -128,4 +128,39 @@ public class ProdutoService {
                 reposicaoDTO.quantidadeReposicao(),
                 produto.getQuantidadeDisponivel());
     }
+
+    @Transactional
+    public ProdutoDetailsReservaDTO reservarProduto(Long id, ReservarProdutoRequestDTO reservarProdutoDTO) {
+        Produto produto = repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(id));
+
+        // redis garantindo atomicidade e isolamento - decrementa a quantidade disponivel pela quantidade a ser reservada e retorna a quantidade atual disponivel
+        Long quantidadeAtualDisponivel = redisTemplate.opsForValue().decrement("estoque:" + produto.getId(), reservarProdutoDTO.quantidadeDesejada()); //DECRBY
+
+        // redis pode retornar um valor negativo em caso de estoque insufiente
+        if (quantidadeAtualDisponivel < 0) {
+            // incrementa denovo o valor que foi decrementado
+            redisTemplate.opsForValue().increment("estoque:" + produto.getId(), reservarProdutoDTO.quantidadeDesejada());
+            throw new RuntimeException(""); // excecao personalizada a ser criada
+        }
+
+        produto.setQuantidadeDisponivel(quantidadeAtualDisponivel.intValue());
+
+        MovimentacaoEstoque movimentacaoEstoque = MovimentacaoEstoque.builder()
+                .produtoId(produto.getId())
+                .pedidoId(reservarProdutoDTO.pedidoId())
+                .tipoMovimentacao(TipoMovimentacao.RESERVA)
+                .quantidade(reservarProdutoDTO.quantidadeDesejada()) // reserva = sempre diminui uma quantidade
+                .build();
+
+        repository.save(produto);
+        estoqueRepository.save(movimentacaoEstoque);
+
+        return new ProdutoDetailsReservaDTO(movimentacaoEstoque.getId(),
+                produto.getId(),
+                produto.getNome(),
+                movimentacaoEstoque.getPedidoId(),
+                reservarProdutoDTO.quantidadeDesejada(),
+                produto.getQuantidadeDisponivel());
+    }
 }
