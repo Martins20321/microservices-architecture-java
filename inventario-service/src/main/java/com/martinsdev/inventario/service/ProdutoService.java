@@ -37,7 +37,7 @@ public class ProdutoService {
 
         if (produto.isEmpty()) { // ou nao existe ou nao esta salvo no cache
             Produto produtoSQL = repository.findById(id)
-                    .orElseThrow(() -> new ResourceNotFoundException(id));
+                    .orElseThrow(() -> new ResourceNotFoundException("Product not found by id: " + id));
 
             // salva no redis e retorna ao usuario
             Map<String, Object> camposProdutoRedis = new HashMap<>();
@@ -89,7 +89,7 @@ public class ProdutoService {
 
     public ProdutoResponseDTO atualizarProduto(Long id, ProdutoAtualizarRequestDTO produtoDTO) {
         Produto produto = repository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException(id));
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found by id: " + id));
 
         // verifica se o atributo veio no corpo e evita um nulo
         if (produtoDTO.nome() != null) produto.setNome(produtoDTO.nome());
@@ -107,7 +107,7 @@ public class ProdutoService {
     @Transactional
     public ProdutoDetailsReposicaoDTO reposicaoProduto(Long id, ProdutoReposicaoRequestDTO reposicaoDTO) {
         Produto produto = repository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException(id));
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found by id: " + id));
 
         // redis garantindo atomicidade e isolamento
         Long novaQuantidade = redisTemplate.opsForValue().increment("estoque:" + produto.getId(), reposicaoDTO.quantidadeReposicao());
@@ -133,7 +133,7 @@ public class ProdutoService {
     @Transactional
     public ProdutoDetailsReservaDTO reservarProduto(Long id, ReservarProdutoRequestDTO reservarProdutoDTO) {
         Produto produto = repository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException(id));
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found by id: " + id));
 
         // redis garantindo atomicidade e isolamento - decrementa a quantidade disponivel pela quantidade a ser reservada e retorna a quantidade atual disponivel
         Long quantidadeAtualDisponivel = redisTemplate.opsForValue().decrement("estoque:" + produto.getId(), reservarProdutoDTO.quantidadeDesejada()); //DECRBY
@@ -165,5 +165,26 @@ public class ProdutoService {
                 movimentacaoEstoque.getPedidoId(),
                 reservarProdutoDTO.quantidadeDesejada(),
                 produto.getQuantidadeDisponivel());
+    }
+
+    public ProdutoDetailsConfirmarReservaDTO confirmarReservaProduto(Long id, ConfirmarReservaProdutoDTO confirmarReservaProduto) {
+        // buscando a reserva original com um metodo do Spring Data Jpa
+        MovimentacaoEstoque reserva = estoqueRepository.findByProdutoIdAndPedidoIdAndTipoMovimentacao(id, confirmarReservaProduto.pedidoId(), TipoMovimentacao.RESERVA)
+                .orElseThrow(() -> new ResourceNotFoundException("No reservation found related to this order: " + confirmarReservaProduto.pedidoId()));
+
+        // registrando a confirmacao
+        MovimentacaoEstoque movimentacaoEstoque = MovimentacaoEstoque.builder()
+                .produtoId(reserva.getProdutoId())
+                .pedidoId(reserva.getPedidoId())
+                .tipoMovimentacao(TipoMovimentacao.CONFIRMACAO)
+                .quantidade(reserva.getQuantidade())
+                .build();
+
+        estoqueRepository.save(movimentacaoEstoque);
+
+        return new ProdutoDetailsConfirmarReservaDTO(movimentacaoEstoque.getId(),
+                movimentacaoEstoque.getProdutoId(),
+                movimentacaoEstoque.getPedidoId(),
+                movimentacaoEstoque.getQuantidade());
     }
 }
