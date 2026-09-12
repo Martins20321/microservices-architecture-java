@@ -1,6 +1,7 @@
 package com.martinsdev.inventario.infra.handler;
 
 import com.martinsdev.inventario.infra.exception.ErrorResponse;
+import com.martinsdev.inventario.infra.exception.InsufficientStockException;
 import com.martinsdev.inventario.infra.exception.ProductAlreadyExistsException;
 import com.martinsdev.inventario.infra.exception.ResourceNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -23,8 +24,16 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(ProductAlreadyExistsException.class)
-    public ResponseEntity<ErrorResponse> handleInvalidOperation(ProductAlreadyExistsException ex, HttpServletRequest request) {
+    public ResponseEntity<ErrorResponse> handleProductAlreadyExists(ProductAlreadyExistsException ex, HttpServletRequest request) {
         String error = "Product already exists";
+        HttpStatus status = HttpStatus.BAD_REQUEST;
+        ErrorResponse errorResponse = new ErrorResponse(Instant.now(), status.value(), error, ex.getMessage(), request.getRequestURI());
+        return ResponseEntity.status(status).body(errorResponse);
+    }
+
+    @ExceptionHandler(InsufficientStockException.class)
+    public ResponseEntity<ErrorResponse> handleInsufficientStock(InsufficientStockException ex, HttpServletRequest request) {
+        String error = "Insufficient stock";
         HttpStatus status = HttpStatus.BAD_REQUEST;
         ErrorResponse errorResponse = new ErrorResponse(Instant.now(), status.value(), error, ex.getMessage(), request.getRequestURI());
         return ResponseEntity.status(status).body(errorResponse);
