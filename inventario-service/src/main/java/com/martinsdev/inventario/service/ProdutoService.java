@@ -1,6 +1,7 @@
 package com.martinsdev.inventario.service;
 
 import com.martinsdev.inventario.dto.*;
+import com.martinsdev.inventario.infra.exception.InsufficientStockException;
 import com.martinsdev.inventario.infra.exception.ProductAlreadyExistsException;
 import com.martinsdev.inventario.infra.exception.ResourceNotFoundException;
 import com.martinsdev.inventario.model.MovimentacaoEstoque;
@@ -141,7 +142,9 @@ public class ProdutoService {
         if (quantidadeAtualDisponivel < 0) {
             // incrementa denovo o valor que foi decrementado
             redisTemplate.opsForValue().increment("estoque:" + produto.getId(), reservarProdutoDTO.quantidadeDesejada());
-            throw new RuntimeException(""); // excecao personalizada a ser criada
+            throw new InsufficientStockException("Insufficient stock for product: " + produto.getNome() +
+                    ": requested " + reservarProdutoDTO.quantidadeDesejada() +
+                    ", available " + quantidadeAtualDisponivel + reservarProdutoDTO.quantidadeDesejada());
         }
 
         produto.setQuantidadeDisponivel(quantidadeAtualDisponivel.intValue());
