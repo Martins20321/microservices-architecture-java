@@ -16,6 +16,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -144,10 +145,19 @@ public class ProdutoService {
             redisTemplate.opsForValue().increment("estoque:" + produto.getId(), reservarProdutoDTO.quantidadeDesejada());
             throw new InsufficientStockException("Insufficient stock for product: " + produto.getNome() +
                     ": requested " + reservarProdutoDTO.quantidadeDesejada() +
-                    ", available " + quantidadeAtualDisponivel + reservarProdutoDTO.quantidadeDesejada());
+                    ", available " + (quantidadeAtualDisponivel + reservarProdutoDTO.quantidadeDesejada()));
         }
 
         produto.setQuantidadeDisponivel(quantidadeAtualDisponivel.intValue());
+
+        Map<String, Object> camposReservaRedis = new HashMap<>();
+        camposReservaRedis.put("produtoId", produto.getId());
+        camposReservaRedis.put("pedidoId", reservarProdutoDTO.pedidoId());
+        camposReservaRedis.put("quantidadeReservada", reservarProdutoDTO.quantidadeDesejada());
+
+        // nova chave para expirar uma reserva
+        redisTemplate.opsForHash().putAll("reserva:" + produto.getId() + ":" + reservarProdutoDTO.pedidoId(), camposReservaRedis); // envia a chave para o redis
+        redisTemplate.expire("reserva:" + produto.getId() + ":" + reservarProdutoDTO.pedidoId(), Duration.ofMinutes(30)); // define um TTL para essa chave
 
         MovimentacaoEstoque movimentacaoEstoque = MovimentacaoEstoque.builder()
                 .produtoId(produto.getId())
