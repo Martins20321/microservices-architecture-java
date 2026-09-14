@@ -46,4 +46,9 @@ public class ProdutoController {
     public ResponseEntity<ProdutoDetailsReposicaoDTO> reposicaoProduto(@PathVariable Long id, @Valid @RequestBody ProdutoReposicaoRequestDTO reposicaoDTO) {
         return ResponseEntity.ok(service.reposicaoProduto(id, reposicaoDTO));
     }
+
+    @PostMapping("/{id}/reservar")
+    public ResponseEntity<ProdutoDetailsReservaDTO> reservarProduto(@PathVariable Long id, @Valid @RequestBody ReservarProdutoRequestDTO reservarProdutoDTO) {
+        return ResponseEntity.ok(service.reservarProduto(id, reservarProdutoDTO));
+    }
 }
