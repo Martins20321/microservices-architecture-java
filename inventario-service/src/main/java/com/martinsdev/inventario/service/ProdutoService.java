@@ -187,4 +187,29 @@ public class ProdutoService {
                 movimentacaoEstoque.getPedidoId(),
                 movimentacaoEstoque.getQuantidade());
     }
+
+    // metodo chamado quando um pagamento e recusado
+    @Transactional
+    public void cancelarReserva(Long id, CancelarReservaProdutoDTO cancelarReserva) {
+        // buscando a reserva original com um metodo do Spring Data Jpa
+        MovimentacaoEstoque reserva = estoqueRepository.findByProdutoIdAndPedidoIdAndTipoMovimentacao(id, cancelarReserva.pedidoId(), TipoMovimentacao.RESERVA)
+                .orElseThrow(() -> new ResourceNotFoundException("No reservation found related to this order: " + cancelarReserva.pedidoId()));
+
+        Produto produto = repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found by id: " + id));
+
+        // incrementa de volta a quantidade que foi reservada - redis retornado o valor apos o incremento
+        Long quantidadeAtualDisponivel = redisTemplate.opsForValue().increment("estoque:" + id, reserva.getQuantidade()); // busca a quantidade no banco
+        produto.setQuantidadeDisponivel(quantidadeAtualDisponivel.intValue());
+
+        MovimentacaoEstoque movimentacaoEstoque = MovimentacaoEstoque.builder()
+                .produtoId(produto.getId())
+                .pedidoId(reserva.getPedidoId())
+                .tipoMovimentacao(TipoMovimentacao.CANCELAMENTO_RESERVA)
+                .quantidade(reserva.getQuantidade())
+                .build();
+
+        estoqueRepository.save(movimentacaoEstoque);
+        repository.save(produto);
+    }
 }
