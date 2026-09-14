@@ -56,4 +56,10 @@ public class ProdutoController {
     public ResponseEntity<ProdutoDetailsConfirmarReservaDTO> confirmarReservaProduto(@PathVariable Long id, @Valid @RequestBody ConfirmarReservaProdutoDTO confirmarReservaProdutoDTO) {
         return ResponseEntity.ok(service.confirmarReservaProduto(id, confirmarReservaProdutoDTO));
     }
+
+    @PostMapping("/{id}/cancelar-reserva")
+    public ResponseEntity<Void> cancelarReservaProduto(@PathVariable Long id, @Valid @RequestBody CancelarReservaProdutoDTO cancelarReservaProdutoDTO) {
+        service.cancelarReserva(id, cancelarReservaProdutoDTO);
+        return ResponseEntity.noContent().build();
+    }
 }
