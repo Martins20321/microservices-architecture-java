@@ -4,6 +4,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.listener.ChannelTopic;
+import org.springframework.data.redis.listener.RedisMessageListenerContainer;
 import org.springframework.data.redis.serializer.GenericJacksonJsonRedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 import tools.jackson.databind.ObjectMapper;
@@ -23,5 +25,15 @@ public class InventarioRedisConfiguration {
         redisTemplate.setHashValueSerializer(new GenericJacksonJsonRedisSerializer(objectMapper));
 
         return redisTemplate;
+    }
+
+    @Bean
+    public RedisMessageListenerContainer messageListenerContainer(LettuceConnectionFactory connectionFactory,
+                                                                  ReservaExpirationListener reservaExpirationListener) {
+        RedisMessageListenerContainer messageListenerContainer = new RedisMessageListenerContainer();
+        messageListenerContainer.setConnectionFactory(connectionFactory); // conecta ao redis de verdade
+        messageListenerContainer.addMessageListener(reservaExpirationListener, new ChannelTopic("__keyevent@0__:expired"));
+
+        return messageListenerContainer;
     }
 }
