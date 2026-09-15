@@ -5,5 +5,6 @@ public enum TipoMovimentacao {
     RESERVA,
     CONFIRMACAO,
     CANCELAMENTO_RESERVA,
+    EXPIRACAO_RESERVA,
     REPOSICAO;
 }
