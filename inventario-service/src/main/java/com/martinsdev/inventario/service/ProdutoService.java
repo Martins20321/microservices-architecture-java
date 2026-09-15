@@ -222,4 +222,32 @@ public class ProdutoService {
         estoqueRepository.save(movimentacaoEstoque);
         repository.save(produto);
     }
+
+    // metodo chamado quando uma chave expirar - keyspace notification (pub/sub)
+    // expirar reserva = reserva nao foi confirmada e ira ser cancelada
+    @Transactional
+    public void expirarReserva(Long produtoId, Long pedidoId) {
+        // ids obtidos a partir do split feito na chave
+        // buscando a reserva original com metodo do Spring Data Jpa
+        MovimentacaoEstoque reserva = estoqueRepository.findByProdutoIdAndPedidoIdAndTipoMovimentacao(produtoId, pedidoId, TipoMovimentacao.RESERVA)
+                .orElseThrow(() -> new ResourceNotFoundException("No reservation found related to this order: " + pedidoId));
+
+        Produto produto = repository.findById(produtoId)
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found by id: " + produtoId));
+
+        // incrementa de volta a quantidade que foi reservada
+        Long quantidadeAtualDisponivel = redisTemplate.opsForValue().increment("estoque:" + produtoId, reserva.getQuantidade());
+        produto.setQuantidadeDisponivel(quantidadeAtualDisponivel.intValue());
+
+        // registra a nova movimentacao quando uma chave expirar
+        MovimentacaoEstoque movimentacaoEstoque = MovimentacaoEstoque.builder()
+                .produtoId(produtoId)
+                .pedidoId(pedidoId)
+                .tipoMovimentacao(TipoMovimentacao.EXPIRACAO_RESERVA)
+                .quantidade(reserva.getQuantidade())
+                .build();
+
+        repository.save(produto);
+        estoqueRepository.save(movimentacaoEstoque);
+    }
 }
