@@ -10,6 +10,8 @@ import com.martinsdev.inventario.model.enums.TipoMovimentacao;
 import com.martinsdev.inventario.repository.MovimentacaoEstoqueRepository;
 import com.martinsdev.inventario.repository.ProdutoRepository;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -27,6 +29,8 @@ public class ProdutoService {
     private final ProdutoRepository repository;
     private final MovimentacaoEstoqueRepository estoqueRepository;
     private final RedisTemplate<String, Object> redisTemplate;
+
+    private static final Logger log = LoggerFactory.getLogger(ProdutoService.class);
 
     public Page<ProdutoResponseDTO> buscarTodos(Pageable pageable) {
         return repository.findAll(pageable).map(ProdutoResponseDTO::new);
@@ -249,5 +253,8 @@ public class ProdutoService {
 
         repository.save(produto);
         estoqueRepository.save(movimentacaoEstoque);
+
+        log.info("Chave 'reserva: " + produtoId + ":" + pedidoId + "' foi expirada e o a quantidade reservada: "
+                + reserva.getQuantidade() + " foi devolvida e a quantidade atual é: " + produto.getQuantidadeDisponivel());
     }
 }
