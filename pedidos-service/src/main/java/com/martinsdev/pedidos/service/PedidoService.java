@@ -36,9 +36,8 @@ public class PedidoService {
     public PedidoResponseDTO criarPedido(PedidoCriarRequestDTO pedidoDTO) {
         List<ItemPedido> itens = pedidoDTO.itens().stream()
                 .map(item -> ItemPedido.builder()
-                        .descricao(item.descricao())
                         .quantidade(item.quantidade())
-                        .valor(item.valor())
+                        .valorUnitario(item.valor())
                         .build()).toList();
 
         Pedido pedido = Pedido.builder()

@@ -20,14 +20,14 @@ public class ItemPedido {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
-    private String descricao;
+    @Column(nullable = false, name = "produto_id")
+    private Long produtoId;
 
     @Column(nullable = false)
     private Integer quantidade;
 
-    @Column(nullable = false)
-    private BigDecimal valor;
+    @Column(nullable = false, name = "valor_unitario")
+    private BigDecimal valorUnitario;
 
     @ManyToOne
     @JoinColumn(name = "pedido_Id")
