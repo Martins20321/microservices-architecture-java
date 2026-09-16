@@ -1,9 +1,10 @@
 package com.martinsdev.pedidos.service;
 
-import com.martinsdev.pedidos.dto.PedidoAtualizarRequestDTO;
+import com.martinsdev.pedidos.dto.ItemPedidoCriarRequestDTO;
 import com.martinsdev.pedidos.dto.PedidoCriarRequestDTO;
 import com.martinsdev.pedidos.dto.PedidoResponseDTO;
-import com.martinsdev.pedidos.infra.exception.InvalidOperationException;
+import com.martinsdev.pedidos.infra.client.ProdutoClient;
+import com.martinsdev.pedidos.infra.client.ProdutoDTO;
 import com.martinsdev.pedidos.infra.exception.ResourceNotFoundException;
 import com.martinsdev.pedidos.model.ItemPedido;
 import com.martinsdev.pedidos.model.Pedido;
@@ -15,6 +16,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -22,6 +24,7 @@ import java.util.List;
 public class PedidoService {
 
     private final PedidoRepository repository;
+    private final ProdutoClient produtoClient;
 
     public Page<PedidoResponseDTO> buscarTodos(Pageable pageable) {
         return repository.findAll(pageable).map(PedidoResponseDTO::new);
@@ -32,13 +35,20 @@ public class PedidoService {
                 .orElseThrow(() -> new ResourceNotFoundException(id));
     }
 
-    @Transactional
     public PedidoResponseDTO criarPedido(PedidoCriarRequestDTO pedidoDTO) {
-        List<ItemPedido> itens = pedidoDTO.itens().stream()
-                .map(item -> ItemPedido.builder()
-                        .quantidade(item.quantidade())
-                        .valorUnitario(item.valor())
-                        .build()).toList();
+        List<ItemPedido> itens = new ArrayList<>();
+
+        for (ItemPedidoCriarRequestDTO item : pedidoDTO.itens()){
+            ProdutoDTO produto = produtoClient.buscarProdutoPorId(item.produtoId());
+
+            ItemPedido itemPedido = ItemPedido.builder()
+                    .produtoId(produto.id()) // usando da fonte da verdade (inventario)
+                    .quantidade(item.quantidade())
+                    .valorUnitario(produto.preco())
+                    .build();
+
+            itens.add(itemPedido);
+        }
 
         Pedido pedido = Pedido.builder()
                 .status(StatusPedido.REALIZADO)
@@ -48,6 +58,7 @@ public class PedidoService {
         //setando para itemPedido
         itens.forEach(itemPedido -> itemPedido.setPedido(pedido));
         repository.save(pedido);
+
         return new PedidoResponseDTO(pedido);
     }
 
