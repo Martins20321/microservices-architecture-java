@@ -6,7 +6,7 @@ Projeto backend desenvolvido com foco em **arquitetura de microsserviços**, apl
 
 ## 📌 Sobre o Projeto
 
-Sistema de **Pedidos e Pagamentos** composto por microsserviços independentes que se comunicam de forma síncrona (OpenFeign) e assíncrona (RabbitMQ), orquestrados por um API Gateway localmente e por um Application Load Balancer na AWS. O projeto foi desenvolvido com o objetivo de consolidar conhecimentos em arquitetura distribuída, comunicação entre serviços, mensageria, tolerância a falhas, service discovery e infraestrutura como código.
+Sistema de Pedidos, Pagamentos, Notificações e Inventário composto por microsserviços independentes, combinando comunicação síncrona (OpenFeign) para consultas pontuais e assíncrona (RabbitMQ) para notificação de eventos entre serviços, orquestrados por um API Gateway com Service Discovery. O projeto evoluiu de uma prova de conceito de arquitetura distribuída para um espaço de aprendizado contínuo, incorporando mensageria com garantias de consistência (idempotência, publisher confirms/returns, lock otimista) e Redis para cache e controle de concorrência em tempo real.
 
 ---
 
@@ -28,8 +28,8 @@ Sistema de **Pedidos e Pagamentos** composto por microsserviços independentes q
 1. Cliente cria um pedido via `pedidos-service`
 2. Cliente cria um pagamento via `pagamentos-service`, que consulta o pedido via OpenFeign (síncrono)
 3. `pagamentos-service` publica um evento `pagamento.aguardado-pedido` no RabbitMQ; `pedidos-service` consome e atualiza o pedido para **AGUARDANDO_CONFIRMAR_PAGAMENTO**
-4. Ao aprovar o pagamento, `pagamentos-service` publica `pagamento.aprovado` na Exchange direct (`pagamentos.ex`), roteado simultaneamente para dois consumers: `pedidos-service` (confirma o pedido) e `notificacoes-service` (busca os dados do pedido via Feign e envia e-mail de confirmação ao cliente)
-5. Ao recusar o pagamento, `pagamentos-service` publica `pagamento.recusado`, roteado da mesma forma: `pedidos-service` (cancela o pedido) e `notificacoes-service` (envia e-mail de recusa ao cliente)
+4. Ao aprovar o pagamento, pagamentos-service publica pagamento.aprovado no Exchange direct (pagamentos.ex), roteado simultaneamente para três consumers: pedidos-service (confirma o pedido), notificacoes-service (busca dados do pedido via Feign e envia e-mail de confirmação), e inventario-service (via endpoints REST — decrementa o estoque reservado)
+5. Ao recusar o pagamento, pagamentos-service publica pagamento.recusado, roteado da mesma forma: pedidos-service cancela, notificacoes-service envia e-mail de recusa, inventario-service libera a reserva
 
 > A notificação de status entre `pagamentos-service` e `pedidos-service` é 100% assíncrona via RabbitMQ. As comunicações síncronas remanescentes são: a consulta de dados do pedido no momento da criação do pagamento (`pagamentos-service` → `pedidos-service`), e a consulta de detalhes do pedido para montagem do e-mail (`notificacoes-service` → `pedidos-service`).
 
@@ -43,7 +43,6 @@ Sistema de **Pedidos e Pagamentos** composto por microsserviços independentes q
 - **Spring Cloud 2025.0.0**
 - **Spring Data JPA** (pedidos-service)
 - **Spring Data MongoDB** (pagamentos-service)
-- **Spring Mail (JavaMailSender)** — envio de notificações por e-mail via SMTP
 - **Flyway** (migrations do PostgreSQL)
 
 ### Microsserviços & Cloud
@@ -56,6 +55,11 @@ Sistema de **Pedidos e Pagamentos** composto por microsserviços independentes q
 ### Banco de Dados
 - **PostgreSQL** — pedidos-ms (local e RDS na AWS)
 - **MongoDB** — pagamentos-ms (local e DocumentDB na AWS)
+
+### Mensageria & Cache
+- **RabbitMQ** — mensageria assíncrona (Exchange direct, filas Quorum, DLQ, retry com backoff)
+- **Redis** — cache-aside de produtos e controle de concorrência em tempo real (operações atômicas, TTL, Keyspace Notifications)
+- **Spring Mail** — envio de e-mail via SMTP (notificacoes-service)
 
 ### Infraestrutura (AWS)
 - **AWS CDK (Java)** — Infraestrutura como Código
@@ -80,6 +84,7 @@ microservices-architecture-java/
 ├── pedidos-service/          # MS de Pedidos (PostgreSQL)
 ├── pagamentos-service/       # MS de Pagamentos (MongoDB)
 ├── notificacoes-service/     # MS de Notificações (RabbitMQ + Feign + SMTP)
+├── inventario-service/       # MS de Inventário (PostgreSQL + Redis)
 ├── discovery/                # Eureka Server (ambiente local)
 ├── gateway/                  # Spring Cloud Gateway (ambiente local)
 └── infra/                    # Infraestrutura AWS via CDK
@@ -123,6 +128,19 @@ microservices-architecture-java/
 > Localmente todos os endpoints são acessíveis via Gateway na porta **8081**
 > Exemplo: `http://localhost:8081/pedidos-service/v1/pedidos`
 
+### inventario-service
+
+| Método | Endpoint                              | Descrição                          |
+| ------ | -------------------------------------- | ----------------------------------- |
+| GET    | `/v1/produtos`                         | Listar produtos (paginado)          |
+| GET    | `/v1/produtos/{id}`                    | Buscar produto por ID (cache-aside) |
+| POST   | `/v1/produtos`                         | Cadastrar produto                   |
+| PATCH  | `/v1/produtos/{id}`                    | Atualizar produto (parcial)         |
+| POST   | `/v1/produtos/{id}/reposicao`          | Repor estoque                       |
+| POST   | `/v1/produtos/{id}/reservar`           | Reservar quantidade                 |
+| POST   | `/v1/produtos/{id}/confirmar`          | Confirmar reserva                   |
+| POST   | `/v1/produtos/{id}/cancelar-reserva`   | Cancelar reserva                    |
+
 ---
 
 ## 🔄 Padrões Implementados
@@ -133,6 +151,9 @@ Todos os microsserviços se registram automaticamente no **Eureka Server** em am
 ### Circuit Breaker
 Implementado com **Resilience4j** na comunicação síncrona restante (`buscarPedido`, via OpenFeign). Em caso de falha:
 - `criarPagamento` → retorna **503 Service Unavailable**
+
+### Cache e Concorrência com Redis
+Cache-aside para dados de produto (leitura ~90% mais rápida que consulta direta ao banco); operações atômicas (INCR/DECR) protegendo reservas de estoque contra concorrência; Keyspace Notifications para expiração automática de reservas não confirmadas.
 
 ### Mensageria Assíncrona (RabbitMQ)
 A notificação de status entre `pagamentos-service` e `pedidos-service` é feita via eventos publicados em um **Exchange direct** (`pagamentos.ex`), consumidos por filas dedicadas:
@@ -207,11 +228,12 @@ GMAIL_PASSWORD=sua_senha_de_app
 
 ### Ordem de inicialização
 1. **discovery** — Eureka Server (`localhost:8761`)
-2. **RabbitMQ** — broker de mensageria (`localhost:5672`, management em `localhost:15672`)
-3. **pedidos-service** — MS de Pedidos
-4. **pagamentos-service** — MS de Pagamentos
-5. **notificacoes-service** — MS de Notificações
-6. **gateway** — API Gateway (`localhost:8081`)
+2. **RabbitMQ** e **Redis** — infraestrutura de mensageria e cache
+3. **pedidos-service**
+4. **pagamentos-service**
+5. **notificacoes-service**
+6. **inventario-service**
+7. **gateway** — API Gateway (`localhost:8081`)
 
 ---
 
