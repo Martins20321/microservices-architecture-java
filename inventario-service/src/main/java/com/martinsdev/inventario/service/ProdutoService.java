@@ -176,6 +176,7 @@ public class ProdutoService {
         return new ProdutoDetailsReservaDTO(movimentacaoEstoque.getId(),
                 produto.getId(),
                 produto.getNome(),
+                produto.getPreco(),
                 movimentacaoEstoque.getPedidoId(),
                 reservarProdutoDTO.quantidadeDesejada(),
                 produto.getQuantidadeDisponivel());
