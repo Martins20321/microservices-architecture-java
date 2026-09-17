@@ -1,6 +1,7 @@
 package com.martinsdev.pedidos.service;
 
 import com.martinsdev.pedidos.dto.ItemPedidoCriarRequestDTO;
+import com.martinsdev.pedidos.dto.ItemPedidoDTO;
 import com.martinsdev.pedidos.dto.PedidoCriarRequestDTO;
 import com.martinsdev.pedidos.dto.PedidoResponseDTO;
 import com.martinsdev.pedidos.infra.client.ProdutoClient;
@@ -37,6 +38,7 @@ public class PedidoService {
 
     public PedidoResponseDTO criarPedido(PedidoCriarRequestDTO pedidoDTO) {
         List<ItemPedido> itens = new ArrayList<>();
+        List<ItemPedidoDTO> itensDTO = new ArrayList<>(); // utilizado somente para melhor formatacao de resposta, incluindo o nome do produto
 
         for (ItemPedidoCriarRequestDTO item : pedidoDTO.itens()){
             ProdutoDTO produto = produtoClient.buscarProdutoPorId(item.produtoId());
@@ -47,7 +49,10 @@ public class PedidoService {
                     .valorUnitario(produto.preco())
                     .build();
 
+            ItemPedidoDTO itemPedidoDTO = new ItemPedidoDTO(itemPedido, produto);
+
             itens.add(itemPedido);
+            itensDTO.add(itemPedidoDTO);
         }
 
         Pedido pedido = Pedido.builder()
@@ -59,11 +64,10 @@ public class PedidoService {
         itens.forEach(itemPedido -> itemPedido.setPedido(pedido));
         repository.save(pedido);
 
-        return new PedidoResponseDTO(pedido);
+        return new PedidoResponseDTO(pedido, itensDTO);
     }
 
     //Quando pagamento for criado relacionado a esse pedido, informa o status AGUARDANDO_CONFIRMAR_PAGAMENTO
-    @Transactional
     public PedidoResponseDTO aguardarPagamento(Long id){
         Pedido pedido = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(id));
@@ -74,7 +78,6 @@ public class PedidoService {
         return new PedidoResponseDTO(pedido);
     }
 
-    @Transactional
     public PedidoResponseDTO confirmarPagamento(Long id) {
         Pedido pedido = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(id));
@@ -85,7 +88,6 @@ public class PedidoService {
         return new PedidoResponseDTO(pedido);
     }
 
-    @Transactional
     //O pedido será cancelado ao recusar o pagamento
     public PedidoResponseDTO recusarPagamento(Long id) {
         Pedido pedido = repository.findById(id)
@@ -97,7 +99,6 @@ public class PedidoService {
         return new PedidoResponseDTO(pedido);
     }
 
-    @Transactional
     public void cancelarPedido(Long id) {
         Pedido pedido = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(id));

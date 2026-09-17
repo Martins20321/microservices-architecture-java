@@ -17,4 +17,8 @@ public record PedidoResponseDTO(Long id,
         this(pedido.getId(), pedido.getStatus(), pedido.getDataCriacao(), pedido.getDataAtualizacao(),
                 pedido.getItens().stream().map(ItemPedidoDTO::new).toList());
     }
+
+    public PedidoResponseDTO(Pedido pedido, List<ItemPedidoDTO> itensDTO) {
+        this(pedido.getId(), pedido.getStatus(), pedido.getDataCriacao(), pedido.getDataAtualizacao(), itensDTO);
+    }
 }
