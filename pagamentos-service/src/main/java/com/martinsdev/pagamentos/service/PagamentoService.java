@@ -62,7 +62,8 @@ public class PagamentoService {
             }
 
             List<ItemPedidoDTO> itens = pedido.itens();
-            BigDecimal valor = itens.stream().map(ItemPedidoDTO::valor).reduce(BigDecimal.ZERO, BigDecimal::add);
+            // obtendo o valor de cada item para montar o pagamento - extraindo o valor e agregando o valor em um unico
+            BigDecimal valor = itens.stream().map(ItemPedidoDTO::valorUnitario).reduce(BigDecimal.ZERO, BigDecimal::add);
 
             Pagamento pagamento = Pagamento.builder()
                     .pedidoId(pagamentoDTO.pedidoId())
