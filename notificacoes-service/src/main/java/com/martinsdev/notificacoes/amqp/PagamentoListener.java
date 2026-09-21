@@ -43,9 +43,8 @@ public class PagamentoListener {
 
         //iterando e já formatando os pedidos
         String itensFormatados = pedido.itens().stream().map(item ->
-                        " - Item: " + item.descricao() + "\n"
-                        + " - Quantidade: " + item.quantidade() + "\n"
-                        + " - Valor: R$ " + item.valor())
+                                " - Quantidade: " + item.quantidade() + "\n"
+                                + " - Valor: R$ " + item.valorUnitario())
                 .collect(Collectors.joining("\n"));
 
         String dataFormatada = pedido.dataCriacao().format(DateTimeFormatter.ofPattern("dd/MM/yyyy 'às' HH:mm:ss"));
@@ -67,7 +66,7 @@ public class PagamentoListener {
                 
                         Atenciosamente,
                         Equipe de Atendimento
-                """,pedido.id(), dataFormatada, itensFormatados));
+                """, pedido.id(), dataFormatada, itensFormatados));
 
         mailSender.send(mailMessage);
         channel.basicAck(deliveryTag, false); //Só confirma a mensagem depois do envio da mensagem
@@ -82,9 +81,8 @@ public class PagamentoListener {
         PedidoDTO pedido = pedidoClient.buscarPedido(pagamentoRecusado.pedidoId());
 
         String itensFormatados = pedido.itens().stream().map(item ->
-                        " - Item: " + item.descricao() + "\n"
-                        + " - Quantidade: " + item.quantidade() + "\n"
-                        + " - Valor: R$ " + item.valor())
+                                " - Quantidade: " + item.quantidade() + "\n"
+                                + " - Valor: R$ " + item.valorUnitario())
                 .collect(Collectors.joining("\n"));
 
         String dataFormatada = pedido.dataCriacao().format(DateTimeFormatter.ofPattern("dd/MM/yyyy 'às' HH:mm:ss"));
