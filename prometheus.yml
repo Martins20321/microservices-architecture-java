@@ -1,0 +1,10 @@
+global:
+  scrape_interval: 5s
+
+scrape_configs:
+  - job_name: 'microservices-architecture-java' # grupo de serviços - melhor visualizacao no grafana
+    static_configs: # configuração do job_name
+      - targets: ['host.docker.internal:9001'] # endereço do pedidos-service
+        labels:
+          application: 'pedidos-service' # nome do serviço {application=pedidos-service}
+    metrics_path: '/actuator/prometheus' # endpoint do prometheus no spring boot
