@@ -13,12 +13,17 @@ services:
   
   grafana:
     image: grafana/grafana:latest
-    networks:
+    volumes:
+      - ./grafana/provisioning/:/etc/grafana/provisioning
+    networks:  
       - network-monitoring
     ports:
       - "3000:3000"
     depends_on:
       - prometheus
+
+volumes:
+  grafana-storage:      
 
 networks:
   network-monitoring:
