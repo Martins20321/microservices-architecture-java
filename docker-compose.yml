@@ -22,6 +22,12 @@ services:
     depends_on:
       - prometheus
 
+  rabbitmq:
+    image: rabbitmq:3.10-management
+    ports:
+      - "5672:5672" # AMQP Protocol
+      - "15672:15672" # Management UI
+
 volumes:
   grafana-storage:      
 
