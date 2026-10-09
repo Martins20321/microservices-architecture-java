@@ -15,6 +15,7 @@ services:
     image: grafana/grafana:latest
     volumes:
       - ./grafana/provisioning/:/etc/grafana/provisioning
+      - grafana-storage:/var/lib/grafana
     networks:  
       - network-monitoring
     ports:
