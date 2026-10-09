@@ -21,14 +21,14 @@ Sistema de Pedidos, Pagamentos, Notificações e Inventário composto por micros
 
 <img width="1234" height="524" alt="DiagramaAWS drawio" src="https://github.com/user-attachments/assets/ec25131d-7e59-474e-b3bd-b304be6f9ed8" />
 
-> ⚠️ Diagramas em atualização; Ainda não refletem a arquitetura de mensageria com RabbitMQ nem o `notificacoes-service`. Serão redesenhados após a conclusão das próximas etapas do roadmap (`inventario-service`, observabilidade).
+> ⚠️ Diagramas em atualização; Ainda não refletem a arquitetura de mensageria com RabbitMQ, o `notificacoes-service`, o `inventario-service` nem a stack de observabilidade (Actuator + Prometheus + Grafana). Serão redesenhados em breve.
 
 ### Fluxo principal
 
 1. Cliente cria um pedido via `pedidos-service`
 2. Cliente cria um pagamento via `pagamentos-service`, que consulta o pedido via OpenFeign (síncrono)
 3. `pagamentos-service` publica um evento `pagamento.aguardado-pedido` no RabbitMQ; `pedidos-service` consome e atualiza o pedido para **AGUARDANDO_CONFIRMAR_PAGAMENTO**
-4. Ao aprovar o pagamento, pagamentos-service publica pagamento.aprovado no Exchange direct (pagamentos.ex), roteado simultaneamente para três consumers: pedidos-service (confirma o pedido), notificacoes-service (busca dados do pedido via Feign e envia e-mail de confirmação), e inventario-service (via endpoints REST — decrementa o estoque reservado)
+4. Ao aprovar o pagamento, pagamentos-service publica pagamento.aprovado no Exchange direct (pagamentos.ex), roteado simultaneamente para três consumers: pedidos-service (confirma o pedido), notificacoes-service (busca dados do pedido via Feign e envia e-mail de confirmação), e inventario-service (confirma a reserva e decrementa o estoque)
 5. Ao recusar o pagamento, pagamentos-service publica pagamento.recusado, roteado da mesma forma: pedidos-service cancela, notificacoes-service envia e-mail de recusa, inventario-service libera a reserva
 
 > A notificação de status entre `pagamentos-service` e `pedidos-service` é 100% assíncrona via RabbitMQ. As comunicações síncronas remanescentes são: a consulta de dados do pedido no momento da criação do pagamento (`pagamentos-service` → `pedidos-service`), e a consulta de detalhes do pedido para montagem do e-mail (`notificacoes-service` → `pedidos-service`).
@@ -72,6 +72,12 @@ Sistema de Pedidos, Pagamentos, Notificações e Inventário composto por micros
 - **Auto Scaling** — escalonamento automático baseado em CPU e memória
 - **AWS VPC** — rede isolada com subnets públicas e privadas
 
+### Observabilidade
+- **Spring Boot Actuator** — health checks e exposição de métricas
+- **Micrometer + Prometheus** — coleta de métricas no formato Prometheus (`/actuator/prometheus`), com histogramas de latência HTTP
+- **Prometheus** — scraping periódico (5s) e armazenamento das métricas dos 4 microsserviços
+- **Grafana** — dashboard provisionado automaticamente baseado nos 4 Golden Signals (Latency, Traffic, Errors e Saturation)
+
 ### Documentação
 - **SpringDoc OpenAPI (Swagger)**
 
@@ -87,6 +93,9 @@ microservices-architecture-java/
 ├── inventario-service/       # MS de Inventário (PostgreSQL + Redis)
 ├── discovery/                # Eureka Server (ambiente local)
 ├── gateway/                  # Spring Cloud Gateway (ambiente local)
+├── grafana/provisioning/     # Datasource (Prometheus) e dashboards provisionados
+├── prometheus.yml            # Scrape targets dos microsserviços
+├── docker-compose.yml        # Prometheus, Grafana e RabbitMQ locais
 └── infra/                    # Infraestrutura AWS via CDK
     ├── InfraApp.java           # Ponto de entrada — registra e envia as Stacks para a AWS
     ├── InfraStack.java         # Modelo base padrão para criação de Stacks
@@ -149,7 +158,7 @@ microservices-architecture-java/
 Todos os microsserviços se registram automaticamente no **Eureka Server** em ambiente local. Na AWS, o **Application Load Balancer** substitui o Eureka, roteando o tráfego para as instâncias saudáveis.
 
 ### Circuit Breaker
-Implementado com **Resilience4j** na comunicação síncrona restante (`buscarPedido`, via OpenFeign). Em caso de falha:
+Implementado com **Resilience4j** no método `criarPagamento` do `pagamentos-service`, que depende da consulta síncrona ao pedido via OpenFeign. Configuração: janela deslizante de 3 chamadas, mínimo de 2 chamadas para avaliar e 25s em estado aberto. Em caso de falha:
 - `criarPagamento` → retorna **503 Service Unavailable**
 
 ### Cache e Concorrência com Redis
@@ -170,10 +179,11 @@ A notificação de status entre `pagamentos-service` e `pedidos-service` é feit
 
 #### Multi-consumer com Exchange Direct
 
-O exchange `pagamentos.ex` roteia os eventos de aprovação/recusa de pagamento para **dois consumers independentes** através de bindings com a mesma routing key:
+O exchange `pagamentos.ex` roteia os eventos de aprovação/recusa de pagamento para **três consumers independentes** através de bindings com a mesma routing key:
 
-- `pedidos-service` — atualiza o status do pedido
-- `notificacoes-service` — envia e-mail de confirmação/recusa ao cliente, buscando os detalhes do pedido via Feign síncrono
+- `pedidos-service` — atualiza o status do pedido (filas `pagamento.aprovado-pedido` / `pagamento.recusado-pedido`)
+- `notificacoes-service` — envia e-mail de confirmação/recusa ao cliente, buscando os detalhes do pedido via Feign síncrono (filas `pagamento.aprovado-notificacao` / `pagamento.recusado-notificacao`)
+- `inventario-service` — confirma a reserva de estoque na aprovação e a libera na recusa (filas `pagamento.aprovado-inventario` / `pagamento.recusado-inventario`)
 
 Essa arquitetura evita o acoplamento de "enriquecer o evento" com dados que só um dos consumers usaria — cada serviço busca exatamente o que precisa, quando precisa.
 
@@ -185,6 +195,24 @@ Essa arquitetura evita o acoplamento de "enriquecer o evento" com dados que só 
 - **Escalonamento dinâmico de consumers** (1 a 3 por fila), aumentando o throughput de processamento sob demanda
 
 Essa migração eliminou os antigos status `APROVADO_SEM_INTEGRACAO`/`RECUSADO_SEM_INTEGRACAO`, que existiam apenas como fallback do Circuit Breaker para falhas na comunicação síncrona de notificação — problema que a mensageria resolve estruturalmente.
+
+### Observabilidade (Actuator + Prometheus + Grafana)
+Cada microsserviço de negócio expõe métricas via **Spring Boot Actuator** em uma **porta de gerenciamento dedicada**, separada do tráfego de negócio (que usa porta aleatória, `server.port=0`, registrada no Eureka). Os endpoints expostos são `health`, `info` e `prometheus`, e o histograma de percentis de `http.server.requests` está habilitado para permitir o cálculo de latência (p99) no Grafana.
+
+| Serviço | Porta de métricas | Endpoint |
+|---------|-------------------|----------|
+| pedidos-service | `9001` | `http://localhost:9001/actuator/prometheus` |
+| pagamentos-service | `9002` | `http://localhost:9002/actuator/prometheus` |
+| inventario-service | `9003` | `http://localhost:9003/actuator/prometheus` |
+| notificacoes-service | `9004` | `http://localhost:9004/actuator/prometheus` |
+
+O **Prometheus** (`prometheus.yml`) faz scrape dessas portas a cada 5s via `host.docker.internal`, rotulando cada alvo com `application=<nome-do-serviço>`, o que permite filtrar por serviço no Grafana. O **Grafana** sobe com o datasource Prometheus e o dashboard *JVM SpringBoot* já provisionados (`grafana/provisioning/`), com painéis de:
+
+- **Tráfego** (req/s), **taxa de erros** e **latência p99**
+- **JVM**: heap/non-heap, threads, GC (pausas e pressão), CPU e uptime
+- **Logs**: eventos por nível
+
+> `discovery` e `gateway` ainda não expõem métricas.
 
 ### Consistência Distribuída
 Cada microsserviço possui seu próprio banco de dados. A comunicação de consulta é síncrona (OpenFeign, com fallback); a notificação de mudança de estado é assíncrona (RabbitMQ), desacoplando os serviços no tempo.
@@ -204,7 +232,9 @@ Escalonamento automático baseado em métricas:
 - PostgreSQL
 - MongoDB
 - RabbitMQ
+- Redis
 - Maven
+- Docker (para Prometheus, Grafana e RabbitMQ via `docker-compose`)
 
 ### Variáveis de ambiente (pedidos-service)
 ```
@@ -234,6 +264,19 @@ GMAIL_PASSWORD=sua_senha_de_app
 5. **notificacoes-service**
 6. **inventario-service**
 7. **gateway** — API Gateway (`localhost:8081`)
+
+### Observabilidade local
+Com os microsserviços em execução, suba a stack de monitoramento:
+
+```bash
+docker compose up -d prometheus grafana
+```
+
+| Ferramenta | URL | Observação |
+|------------|-----|------------|
+| Prometheus | `http://localhost:9090` | Em *Status > Targets* confira se os 4 serviços estão `UP` |
+| Grafana | `http://localhost:3000` | Login padrão `admin` / `admin`; o dashboard já vem provisionado |
+| RabbitMQ Management | `http://localhost:15672` | Disponível ao subir o serviço `rabbitmq` do compose |
 
 ---
 
