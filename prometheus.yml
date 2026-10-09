@@ -7,4 +7,13 @@ scrape_configs:
       - targets: ['host.docker.internal:9001'] # endereço do pedidos-service
         labels:
           application: 'pedidos-service' # nome do serviço {application=pedidos-service}
+      - targets: ['host.docker.internal:9002'] # endereço do pagamentos-service
+        labels:
+          application: 'pagamentos-service' # nome do serviço {application=pagamentos-service}
+      - targets: ['host.docker.internal:9003'] # endereço do inventario-service
+        labels:
+          application: 'inventario-service' # nome do serviço {application=inventario-service}
+      - targets: ['host.docker.internal:9004'] # endereço do notificacoes-service
+        labels:
+          application: 'notificacoes-service' # nome do serviço {application=notificacoes-service}
     metrics_path: '/actuator/prometheus' # endpoint do prometheus no spring boot
