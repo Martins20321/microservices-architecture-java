@@ -23,6 +23,21 @@ services:
     depends_on:
       - prometheus
 
+  alertmanager:
+    image: prom/alertmanager:latest
+    environment:
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
+    volumes:
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml.template
+    # Comando para substituir variáveis de ambiente no arquivo de configuração antes de iniciar o Alertmanager
+    entrypoint: ["/bin/sh", "-c", "sed 's|$${SLACK_WEBHOOK_URL}|'\"$$SLACK_WEBHOOK_URL\"'|g' /etc/alertmanager/alertmanager.yml.template > /etc/alertmanager/alertmanager.yml && exec /bin/alertmanager --config.file=/etc/alertmanager/alertmanager.yml"]
+    networks:
+      - network-monitoring
+    ports:
+      - "9093:9093"
+    depends_on:
+      - prometheus
+
   rabbitmq:
     image: rabbitmq:3.10-management
     ports:

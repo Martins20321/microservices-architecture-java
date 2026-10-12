@@ -1,0 +1,28 @@
+global:
+  # Tempo padrão de espera caso uma notificação falhe
+  resolve_timeout: 5m
+
+# Definição de como os alertas serão roteados
+route:
+  # Um receptor padrão para onde os alertas vão se não caírem em nenhuma regra específica
+  receiver: 'default-receiver'
+  
+  # Agrupa alertas com o mesmo nome em uma única notificação
+  group_by: ['alert-microservices-architecture-java']
+  
+  # Tempo de espera para acumular mais alertas antes de enviar a primeira notificação
+  group_wait: 30s
+  
+  # Tempo de espera para enviar novos alertas que surgiram no mesmo grupo
+  group_interval: 5m
+  
+  # Tempo de espera para reenviar uma notificação caso o alerta continue ativo
+  repeat_interval: 4h
+
+# Lista de canais de destino (onde os alertas serão entregues)
+receivers:
+- name: 'default-receiver'
+  slack_configs:
+  - api_url: '${SLACK_WEBHOOK_URL}'
+    channel: '#alertas'
+    send_resolved: true
