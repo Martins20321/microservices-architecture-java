@@ -18,6 +18,9 @@ scrape_configs:
           application: 'notificacoes-service' # nome do serviço {application=notificacoes-service}
     metrics_path: '/actuator/prometheus' # endpoint do prometheus no spring boot
 
+rule_files:
+  - 'etc/prometheus/alert.rules.yml' # arquivo de regras de alerta
+
 # enviando métricas do prometheus para o alertmanager, quando uma condicao de alerta for atendida
 alerting:
   alertmanagers:

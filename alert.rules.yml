@@ -1,0 +1,13 @@
+groups:
+- name: 'microservices-architecture-java'
+  rules:
+  - alert: ServiceDown
+    # Condição de alerta
+    expr: up{job="microservices-architecture-java"} == 0 # métrica do prometheus que indica se o serviço está ativo (1) ou inativo (0)
+    for: 2m # tempo que a condição precisa ser verdadeira antes de disparar o alerta
+    # Annotations e labels fornecem informações adicionais sobre o alerta, como título, descrição e nível de severidade
+    annotations:
+      title: "Serviço {{ $labels.application }} está inativo"
+      description: "O serviço {{ $labels.application }} não respondeu nos últimos 2 minutos."
+    labels: 
+      severity: 'critical' # nível de severidade do alerta
