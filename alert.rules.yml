@@ -22,3 +22,14 @@ groups:
       description: "O serviço {{ $labels.application }} apresentou uma taxa de erros 5xx superior a 5% nos últimos 1 minuto."
     labels:
       severity: 'warning' # nível de severidade do alerta
+
+  - alert: HighLatency
+  # Condição de alerta
+    expr: histogram_quantile(0.95, sum by (le, application) (rate(http_server_requests_seconds_bucket{job="microservices-architecture-java"}[1m]))) > 1 # métrica do prometheus que indica a latência de resposta p95 nos últimos 1 minuto - captura problemas que afetam 5% das requisições mais lentas
+    for: 1m
+    # Annotations e labels fornecem informações adicionais sobre o alerta, como título, descrição e nível de severidade
+    annotations:
+      title: "Alta latência no serviço {{ $labels.application }}"
+      description: "O serviço {{ $labels.application }} apresentou uma latência de resposta p95 superior a 1 segundo nos últimos 1 minuto."
+    labels:
+      severity: 'warning' # nível de severidade do alerta
