@@ -11,3 +11,14 @@ groups:
       description: "O serviço {{ $labels.application }} não respondeu nos últimos 2 minutos."
     labels: 
       severity: 'critical' # nível de severidade do alerta
+
+  - alert: HighErrorRate
+    # Condição de alerta
+    expr: (sum by(application) (rate(http_server_requests_seconds_count{job="microservices-architecture-java", status=~"5.."}[1m])) / sum by(application) (rate(http_server_requests_seconds_count{job="microservices-architecture-java"}[1m]))) * 100 > 5 # métrica do prometheus que indica a taxa de erros 5xx nos últimos 1 minuto
+    for: 1m # tempo que a condição precisa ser verdadeira antes de disparar o alerta
+    # Annotations e labels fornecem informações adicionais sobre o alerta, como título, descrição e nível de severidade
+    annotations:
+      title: "Alta taxa de erros no serviço {{ $labels.application }}"
+      description: "O serviço {{ $labels.application }} apresentou uma taxa de erros 5xx superior a 5% nos últimos 1 minuto."
+    labels:
+      severity: 'warning' # nível de severidade do alerta
