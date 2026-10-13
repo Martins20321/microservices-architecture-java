@@ -77,6 +77,7 @@ Sistema de Pedidos, Pagamentos, Notificações e Inventário composto por micros
 - **Micrometer + Prometheus** — coleta de métricas no formato Prometheus (`/actuator/prometheus`), com histogramas de latência HTTP
 - **Prometheus** — scraping periódico (5s) e armazenamento das métricas dos 4 microsserviços
 - **Grafana** — dashboard provisionado automaticamente baseado nos 4 Golden Signals (Latency, Traffic, Errors e Saturation)
+- **AlertManager** — roteamento e notificação de alertas via Slack (ServiceDown, HighErrorRate, HighLatency)
 
 ### Documentação
 - **SpringDoc OpenAPI (Swagger)**
@@ -94,8 +95,10 @@ microservices-architecture-java/
 ├── discovery/                # Eureka Server (ambiente local)
 ├── gateway/                  # Spring Cloud Gateway (ambiente local)
 ├── grafana/provisioning/     # Datasource (Prometheus) e dashboards provisionados
-├── prometheus.yml            # Scrape targets dos microsserviços
-├── docker-compose.yml        # Prometheus, Grafana e RabbitMQ locais
+├── alertmanager/alertmanager.yml  # Roteamento de alertas e integração com Slack
+├── alert.rules.yml           # Regras de alerta do Prometheus (ServiceDown, HighErrorRate, HighLatency)
+├── prometheus.yml            # Scrape targets dos microsserviços + integração com AlertManager
+├── docker-compose.yml        # Prometheus, Grafana, AlertManager e RabbitMQ locais
 └── infra/                    # Infraestrutura AWS via CDK
     ├── InfraApp.java           # Ponto de entrada — registra e envia as Stacks para a AWS
     ├── InfraStack.java         # Modelo base padrão para criação de Stacks
@@ -196,7 +199,7 @@ Essa arquitetura evita o acoplamento de "enriquecer o evento" com dados que só 
 
 Essa migração eliminou os antigos status `APROVADO_SEM_INTEGRACAO`/`RECUSADO_SEM_INTEGRACAO`, que existiam apenas como fallback do Circuit Breaker para falhas na comunicação síncrona de notificação — problema que a mensageria resolve estruturalmente.
 
-### Observabilidade (Actuator + Prometheus + Grafana)
+### Observabilidade (Actuator + Prometheus + Grafana + AlertManager)
 Cada microsserviço de negócio expõe métricas via **Spring Boot Actuator** em uma **porta de gerenciamento dedicada**, separada do tráfego de negócio (que usa porta aleatória, `server.port=0`, registrada no Eureka). Os endpoints expostos são `health`, `info` e `prometheus`, e o histograma de percentis de `http.server.requests` está habilitado para permitir o cálculo de latência (p99) no Grafana.
 
 | Serviço | Porta de métricas | Endpoint |
@@ -213,6 +216,14 @@ O **Prometheus** (`prometheus.yml`) faz scrape dessas portas a cada 5s via `host
 - **Logs**: eventos por nível
 
 > `discovery` e `gateway` ainda não expõem métricas.
+
+O **AlertManager** recebe os alertas disparados pelo Prometheus (`alert.rules.yml`) e os notifica em um canal do **Slack**, configurado via `alertmanager/alertmanager.yml` (webhook definido na variável de ambiente `SLACK_WEBHOOK_URL`). Regras ativas:
+
+| Alerta | Condição | Severidade |
+|--------|----------|------------|
+| `ServiceDown` | `up == 0` por 2 minutos | critical |
+| `HighErrorRate` | taxa de erros 5xx > 5% em 1 minuto | warning |
+| `HighLatency` | latência p95 > 1s em 1 minuto | warning |
 
 ### Consistência Distribuída
 Cada microsserviço possui seu próprio banco de dados. A comunicação de consulta é síncrona (OpenFeign, com fallback); a notificação de mudança de estado é assíncrona (RabbitMQ), desacoplando os serviços no tempo.
@@ -234,7 +245,7 @@ Escalonamento automático baseado em métricas:
 - RabbitMQ
 - Redis
 - Maven
-- Docker (para Prometheus, Grafana e RabbitMQ via `docker-compose`)
+- Docker (para Prometheus, Grafana, AlertManager e RabbitMQ via `docker-compose`)
 
 ### Variáveis de ambiente (pedidos-service)
 ```
@@ -256,6 +267,11 @@ GMAIL_USERNAME=seu_email@gmail.com
 GMAIL_PASSWORD=sua_senha_de_app
 ```
 
+### Variáveis de ambiente (AlertManager — Slack)
+```
+SLACK_WEBHOOK_URL=https://hooks.slack.com/services/seu/webhook/url
+```
+
 ### Ordem de inicialização
 1. **discovery** — Eureka Server (`localhost:8761`)
 2. **RabbitMQ** e **Redis** — infraestrutura de mensageria e cache
@@ -269,13 +285,14 @@ GMAIL_PASSWORD=sua_senha_de_app
 Com os microsserviços em execução, suba a stack de monitoramento:
 
 ```bash
-docker compose up -d prometheus grafana
+docker compose up -d prometheus grafana alertmanager
 ```
 
 | Ferramenta | URL | Observação |
 |------------|-----|------------|
-| Prometheus | `http://localhost:9090` | Em *Status > Targets* confira se os 4 serviços estão `UP` |
+| Prometheus | `http://localhost:9090` | Em *Status > Targets* confira se os 4 serviços estão `UP`; em *Alerts*, veja as regras ativas |
 | Grafana | `http://localhost:3000` | Login padrão `admin` / `admin`; o dashboard já vem provisionado |
+| AlertManager | `http://localhost:9093` | Exige `SLACK_WEBHOOK_URL` definida para notificar o canal `#alertas` no Slack |
 | RabbitMQ Management | `http://localhost:15672` | Disponível ao subir o serviço `rabbitmq` do compose |
 
 ---
