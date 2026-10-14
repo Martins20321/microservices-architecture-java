@@ -21,7 +21,7 @@ Sistema de Pedidos, Pagamentos, Notificações e Inventário composto por micros
 
 <img width="1234" height="524" alt="DiagramaAWS drawio" src="https://github.com/user-attachments/assets/ec25131d-7e59-474e-b3bd-b304be6f9ed8" />
 
-> ⚠️ Diagramas em atualização; Ainda não refletem a arquitetura de mensageria com RabbitMQ, o `notificacoes-service`, o `inventario-service` nem a stack de observabilidade (Actuator + Prometheus + Grafana). Serão redesenhados em breve.
+> ⚠️ Diagramas em atualização; Ainda não refletem a arquitetura de mensageria com RabbitMQ, o `notificacoes-service`, o `inventario-service` nem a stack de observabilidade (Actuator + Prometheus + Grafana + AlertManager). Serão redesenhados em breve.
 
 ### Fluxo principal
 
@@ -79,6 +79,9 @@ Sistema de Pedidos, Pagamentos, Notificações e Inventário composto por micros
 - **Grafana** — dashboard provisionado automaticamente baseado nos 4 Golden Signals (Latency, Traffic, Errors e Saturation)
 - **AlertManager** — roteamento e notificação de alertas via Slack (ServiceDown, HighErrorRate, HighLatency)
 
+### Testes de Carga
+- **k6** — script de carga do fluxo completo pedido → pagamento → aprovação (`k6/load-test.js`)
+
 ### Documentação
 - **SpringDoc OpenAPI (Swagger)**
 
@@ -94,6 +97,7 @@ microservices-architecture-java/
 ├── inventario-service/       # MS de Inventário (PostgreSQL + Redis)
 ├── discovery/                # Eureka Server (ambiente local)
 ├── gateway/                  # Spring Cloud Gateway (ambiente local)
+├── k6/load-test.js           # Script de teste de carga (k6)
 ├── grafana/provisioning/     # Datasource (Prometheus) e dashboards provisionados
 ├── alertmanager/alertmanager.yml  # Roteamento de alertas e integração com Slack
 ├── alert.rules.yml           # Regras de alerta do Prometheus (ServiceDown, HighErrorRate, HighLatency)
@@ -124,6 +128,8 @@ microservices-architecture-java/
 | PATCH | `/v1/pedidos/{id}/status` | Atualizar status |
 | DELETE | `/v1/pedidos/{id}` | Cancelar pedido |
 
+> Erros 400 retornados pelo `inventario-service` via Feign (ex.: estoque insuficiente) são traduzidos para uma resposta **400 Bad Request** no `pedidos-service`.
+
 > A confirmação e o cancelamento de pedido decorrentes de pagamento não são feitos via endpoint — acontecem automaticamente pelo consumo dos eventos do RabbitMQ.
 
 ### pagamentos-service
@@ -152,6 +158,8 @@ microservices-architecture-java/
 | POST   | `/v1/produtos/{id}/reservar`           | Reservar quantidade                 |
 | POST   | `/v1/produtos/{id}/confirmar`          | Confirmar reserva                   |
 | POST   | `/v1/produtos/{id}/cancelar-reserva`   | Cancelar reserva                    |
+
+> Na inicialização, o `InventarioDataSeeder` popula 20 produtos iniciais (idempotente: produtos já existentes são ignorados), usados pelo teste de carga.
 
 ---
 
@@ -209,7 +217,7 @@ Cada microsserviço de negócio expõe métricas via **Spring Boot Actuator** em
 | inventario-service | `9003` | `http://localhost:9003/actuator/prometheus` |
 | notificacoes-service | `9004` | `http://localhost:9004/actuator/prometheus` |
 
-O **Prometheus** (`prometheus.yml`) faz scrape dessas portas a cada 5s via `host.docker.internal`, rotulando cada alvo com `application=<nome-do-serviço>`, o que permite filtrar por serviço no Grafana. O **Grafana** sobe com o datasource Prometheus e o dashboard *JVM SpringBoot* já provisionados (`grafana/provisioning/`), com painéis de:
+O **Prometheus** (`prometheus.yml`) faz scrape dessas portas a cada 5s via `host.docker.internal`, rotulando cada alvo com `application=<nome-do-serviço>`, o que permite filtrar por serviço no Grafana. O **Grafana** sobe com o datasource Prometheus e o dashboard *Microservices Golden Signals Overview* já provisionados (`grafana/provisioning/`), com painéis de:
 
 - **Tráfego** (req/s), **taxa de erros** e **latência p99**
 - **JVM**: heap/non-heap, threads, GC (pausas e pressão), CPU e uptime
@@ -224,6 +232,27 @@ O **AlertManager** recebe os alertas disparados pelo Prometheus (`alert.rules.ym
 | `ServiceDown` | `up == 0` por 2 minutos | critical |
 | `HighErrorRate` | taxa de erros 5xx > 5% em 1 minuto | warning |
 | `HighLatency` | latência p95 > 1s em 1 minuto | warning |
+
+### Teste de Carga (k6)
+O script `k6/load-test.js` simula o fluxo completo pelo Gateway (`localhost:8081`): cria um pedido com um produto aleatório, cria o pagamento, aprova-o e faz uma consulta GET aleatória (pedidos, pagamentos ou produtos), com *think time* de 1 a 3s e `check`s de status em cada etapa.
+
+| Estágio | Duração | Usuários virtuais |
+|---------|---------|-------------------|
+| Ramp-up | 30s | 0 → 10 |
+| Carga sustentada | 1m | 10 |
+| Ramp-down | 30s | 10 → 0 |
+
+```bash
+k6 run k6/load-test.js
+```
+
+#### Resultados
+
+Dashboards do Grafana capturados durante a execução:
+
+| Golden Signals — Tráfego, Erros e Latência | JVM — Heap, GC e Threads |
+|---|---|
+| ![Golden Signals](docs/images/load-test/golden-signals.png) | ![JVM](docs/images/load-test/jvm.png) |
 
 ### Consistência Distribuída
 Cada microsserviço possui seu próprio banco de dados. A comunicação de consulta é síncrona (OpenFeign, com fallback); a notificação de mudança de estado é assíncrona (RabbitMQ), desacoplando os serviços no tempo.
@@ -246,6 +275,7 @@ Escalonamento automático baseado em métricas:
 - Redis
 - Maven
 - Docker (para Prometheus, Grafana, AlertManager e RabbitMQ via `docker-compose`)
+- k6 (opcional, para o teste de carga)
 
 ### Variáveis de ambiente (pedidos-service)
 ```
