@@ -1,0 +1,15 @@
+receivers: # de onde receber os dados
+  otlp: # recebe os dados do open telemetry
+    protocols:
+      grpc:
+      http:
+exporters: # para onde enviar os dados
+  otlp: # envia os dados para o jaeger
+    endpoint: "jaeger:4317" # endereço do jaeger
+    tls:
+      insecure: true
+service: # configura o serviço
+  pipelines:
+    traces: # pipeline de rastreamento
+      receivers: [otlp] # recebe os dados do open telemetry
+      exporters: [otlp] # envia os dados para o jaeger
