@@ -55,7 +55,7 @@ services:
       - network-monitoring
     ports:
       - "16686:16686" # Jaeger UI
-    depends-on:
+    depends_on:
       - opentelemetry-collector
 
   rabbitmq:
@@ -65,7 +65,7 @@ services:
       - "15672:15672" # Management UI
 
 volumes:
-  grafana-storage:      
+  grafana-storage:    
 
 networks:
   network-monitoring:
