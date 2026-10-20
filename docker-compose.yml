@@ -43,6 +43,7 @@ services:
     image: otel/opentelemetry-collector:latest
     volumes:
       - ./collector/otel-collector-config.yml:/etc/collector/otel-collector-config.yml
+    command: ["--config=/etc/collector/otel-collector-config.yml"]
     networks:
       - network-monitoring
     ports:
