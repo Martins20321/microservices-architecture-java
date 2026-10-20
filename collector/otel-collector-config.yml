@@ -2,7 +2,9 @@ receivers: # de onde receber os dados
   otlp: # recebe os dados do open telemetry
     protocols:
       grpc:
+        endpoint: 0.0.0.0:4317 # Protocolo gRPC deve escutar esta porta para o Collector receber traces dos serviços instrumentados com OpenTelemetry
       http:
+        endpoint: 0.0.0.0:4318 # Protocolo HTTP deve escutar esta porta para o Collector receber traces dos serviços instrumentados com OpenTelemetry
 exporters: # para onde enviar os dados
   otlp: # envia os dados para o jaeger
     endpoint: "jaeger:4317" # endereço do jaeger
