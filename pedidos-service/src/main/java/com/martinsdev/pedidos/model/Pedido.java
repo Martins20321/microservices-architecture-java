@@ -32,7 +32,7 @@ public class Pedido {
     @UpdateTimestamp
     private LocalDateTime dataAtualizacao;
 
-    @OneToMany(mappedBy = "pedido", fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "pedido", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     private List<ItemPedido> itens;
 
     //Lock Otimista
