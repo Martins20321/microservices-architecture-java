@@ -29,7 +29,7 @@ public class PedidoService {
     private final ProdutoClient produtoClient;
 
     public Page<PedidoResponseDTO> buscarTodos(Pageable pageable) {
-        return repository.findAll(pageable).map(PedidoResponseDTO::new);
+        return repository.findAllWithItens(pageable).map(PedidoResponseDTO::new);
     }
 
     public PedidoResponseDTO buscarPorId(Long id) {
