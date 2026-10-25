@@ -17,7 +17,11 @@ import com.martinsdev.pagamentos.model.enums.StatusPagamento;
 import com.martinsdev.pagamentos.repository.PagamentoRepository;
 import feign.FeignException;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.opentelemetry.api.GlobalOpenTelemetry;
+import io.opentelemetry.context.Context;
+import io.opentelemetry.context.propagation.TextMapSetter;
 import lombok.RequiredArgsConstructor;
+import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.connection.CorrelationData;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.data.domain.Page;
@@ -78,7 +82,21 @@ public class PagamentoService {
 
             //Utilizando o Publisher Confirms
             CorrelationData correlationData = new CorrelationData(UUID.randomUUID().toString());
-            rabbitTemplate.convertAndSend("pagamentos.ex", "pagamento.aguardado-pedido", new PagamentoCriadoEvent(pagamentoDTO.pedidoId()), correlationData);
+            rabbitTemplate.convertAndSend("pagamentos.ex",
+                    "pagamento.aguardado-pedido",
+                    new PagamentoCriadoEvent(pagamentoDTO.pedidoId()),
+                    message -> {
+                        // setter - ensinando o TextMapPropagator como escrever no MessageProperties
+                        TextMapSetter<MessageProperties> setter = (carrier, key, value) -> carrier.setHeader(key, value);
+
+                        GlobalOpenTelemetry.get()
+                                .getPropagators()
+                                .getTextMapPropagator()
+                                .inject(Context.current(), message.getMessageProperties(), setter);
+
+                        return message;
+                    }
+                    , correlationData);
 
             return new PagamentoResponseDTO(pagamento);
         } catch (FeignException.NotFound e) {
