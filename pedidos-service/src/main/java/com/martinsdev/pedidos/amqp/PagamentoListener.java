@@ -7,9 +7,15 @@ import com.martinsdev.pedidos.event.PagamentoRecusadoEvent;
 import com.martinsdev.pedidos.model.enums.StatusPedido;
 import com.martinsdev.pedidos.service.PedidoService;
 import com.rabbitmq.client.Channel;
+import io.opentelemetry.api.GlobalOpenTelemetry;
+import io.opentelemetry.context.Context;
+import io.opentelemetry.context.Scope;
+import io.opentelemetry.context.propagation.TextMapGetter;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.amqp.core.Message;
+import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.support.AmqpHeaders;
 import org.springframework.messaging.handler.annotation.Header;
@@ -17,6 +23,7 @@ import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -27,22 +34,52 @@ public class PagamentoListener {
 
     @RabbitListener(queues = "pagamento.aprovado-pedido")
     public void receiveAprovado(@Payload PagamentoConcluidoEvent pagamentoConcluido,
+                                Message message,
                                 Channel channel,
                                 @Header(AmqpHeaders.DELIVERY_TAG) Long deliveryTag) throws IOException {
 
-        //Acknowledge Manual
-        PedidoResponseDTO pedido = pedidoService.buscarPorId(pagamentoConcluido.pedidoId());
+        TextMapGetter<MessageProperties> getter = new TextMapGetter<>() {
 
-        if (pedido.status().equals(StatusPedido.CONFIRMADO)){
-            channel.basicAck(deliveryTag, false); //Confirma que leu a mensagem, mas não faz nada
-            return;
+            @Override
+            public Iterable<String> keys(MessageProperties messageProperties) { // messageProperties - é o carrier
+                Set<String> headers = messageProperties.getHeaders().keySet(); // getHeaders - devolve o map (chave, valor), keySet - devolve somente as chaves
+                return headers;
+            }
+
+            @Override
+            public String get(MessageProperties messageProperties, String key) {
+                Object valor = messageProperties.getHeader(key);
+
+                if (valor == null) {
+                    return null;
+                }
+                return String.valueOf(valor);
+            }
+        };
+
+        Context contextExtract = GlobalOpenTelemetry.get()
+                .getPropagators()
+                .getTextMapPropagator()
+                .extract(Context.current(), message.getMessageProperties(), getter);
+
+        try (Scope scope = contextExtract.makeCurrent()) {
+
+            //Acknowledge Manual
+            PedidoResponseDTO pedido = pedidoService.buscarPorId(pagamentoConcluido.pedidoId());
+
+            if (pedido.status().
+
+                    equals(StatusPedido.CONFIRMADO)) {
+                channel.basicAck(deliveryTag, false); //Confirma que leu a mensagem, mas não faz nada
+                return;
+            }
+
+            pedidoService.confirmarPagamento(pagamentoConcluido.pedidoId());
+            channel.basicAck(deliveryTag, false); //Confirma a mensagem e não trabalha com múlti acks
+
+            //Consumindo a mensagem
+            log.info("Pagamento aprovado para o pedido com id: {}", pagamentoConcluido.pedidoId());
         }
-
-        pedidoService.confirmarPagamento(pagamentoConcluido.pedidoId());
-        channel.basicAck(deliveryTag, false); //Confirma a mensagem e não trabalha com múlti acks
-
-        //Consumindo a mensagem
-        log.info("Pagamento aprovado para o pedido com id: {}", pagamentoConcluido.pedidoId());
     }
 
     @RabbitListener(queues = "pagamento.recusado-pedido")
@@ -51,7 +88,7 @@ public class PagamentoListener {
                                 @Header(AmqpHeaders.DELIVERY_TAG) Long deliveryTag) throws IOException {
         PedidoResponseDTO pedido = pedidoService.buscarPorId(pagamentoRecusado.pedidoId());
 
-        if (pedido.status().equals(StatusPedido.CANCELADO)){
+        if (pedido.status().equals(StatusPedido.CANCELADO)) {
             channel.basicAck(deliveryTag, false);
             return;
         }
@@ -68,7 +105,7 @@ public class PagamentoListener {
                                  @Header(AmqpHeaders.DELIVERY_TAG) Long deliveryTag) throws IOException {
         PedidoResponseDTO pedido = pedidoService.buscarPorId(pagamentoCriado.pedidoId());
 
-        if (pedido.status().equals(StatusPedido.AGUARDANDO_CONFIRMAR_PAGAMENTO)){
+        if (pedido.status().equals(StatusPedido.AGUARDANDO_CONFIRMAR_PAGAMENTO)) {
             channel.basicAck(deliveryTag, false);
             return;
         }
