@@ -113,7 +113,20 @@ public class PagamentoService {
         repository.save(pagamento);
         //Passando já com o JacksonConveter, com exchange e a routing key
         CorrelationData correlationData = new CorrelationData(UUID.randomUUID().toString());
-        rabbitTemplate.convertAndSend("pagamentos.ex", "pagamento.aprovado", new PagamentoConcluidoEvent(pagamento.getPedidoId()), correlationData);
+        rabbitTemplate.convertAndSend("pagamentos.ex",
+                "pagamento.aprovado",
+                new PagamentoConcluidoEvent(pagamento.getPedidoId()),
+                message -> {
+                    TextMapSetter<MessageProperties> setter = (carrier, key, value) -> carrier.setHeader(key, value);
+
+                    GlobalOpenTelemetry.get()
+                            .getPropagators()
+                            .getTextMapPropagator()
+                            .inject(Context.current(), message.getMessageProperties(), setter);
+
+                    return message;
+                }
+                ,correlationData);
 
         return new PagamentoResponseDTO(pagamento);
     }
