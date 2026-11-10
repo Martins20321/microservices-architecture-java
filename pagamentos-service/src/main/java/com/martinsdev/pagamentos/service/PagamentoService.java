@@ -126,7 +126,7 @@ public class PagamentoService {
 
                     return message;
                 }
-                ,correlationData);
+                , correlationData);
 
         return new PagamentoResponseDTO(pagamento);
     }
@@ -140,7 +140,20 @@ public class PagamentoService {
         repository.save(pagamento);
 
         CorrelationData correlationData = new CorrelationData(UUID.randomUUID().toString());
-        rabbitTemplate.convertAndSend("pagamentos.ex", "pagamento.recusado", new PagamentoRecusadoEvent(pagamento.getPedidoId()), correlationData);
+        rabbitTemplate.convertAndSend("pagamentos.ex",
+                "pagamento.recusado",
+                new PagamentoRecusadoEvent(pagamento.getPedidoId()),
+                message -> {
+                    TextMapSetter<MessageProperties> setter = ((carrier, key, value) -> carrier.setHeader(key, value));
+
+                    GlobalOpenTelemetry.get()
+                            .getPropagators()
+                            .getTextMapPropagator()
+                            .inject(Context.current(), message.getMessageProperties(), setter);
+
+                    return message;
+                }
+                , correlationData);
 
         return new PagamentoResponseDTO(pagamento);
     }
