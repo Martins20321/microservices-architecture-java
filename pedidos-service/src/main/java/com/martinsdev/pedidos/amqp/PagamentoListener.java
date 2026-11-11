@@ -67,9 +67,7 @@ public class PagamentoListener {
             //Acknowledge Manual
             PedidoResponseDTO pedido = pedidoService.buscarPorId(pagamentoConcluido.pedidoId());
 
-            if (pedido.status().
-
-                    equals(StatusPedido.CONFIRMADO)) {
+            if (pedido.status().equals(StatusPedido.CONFIRMADO)) {
                 channel.basicAck(deliveryTag, false); //Confirma que leu a mensagem, mas não faz nada
                 return;
             }

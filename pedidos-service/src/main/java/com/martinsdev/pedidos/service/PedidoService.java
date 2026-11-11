@@ -33,7 +33,7 @@ public class PedidoService {
     }
 
     public PedidoResponseDTO buscarPorId(Long id) {
-        return repository.findById(id).map(PedidoResponseDTO::new)
+        return repository.findByIdWithItens(id).map(PedidoResponseDTO::new)
                 .orElseThrow(() -> new ResourceNotFoundException(id));
     }
 

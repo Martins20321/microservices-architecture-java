@@ -27,6 +27,7 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -104,6 +105,7 @@ public class PagamentoService {
         }
     }
 
+    @Transactional
     public PagamentoResponseDTO aprovarPagamento(String id) {
         Pagamento pagamento = buscarPagamentoPendente(id);
 

@@ -5,9 +5,15 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import java.util.Optional;
 
 public interface PedidoRepository extends JpaRepository<Pedido, Long> {
 
     @Query("SELECT p FROM Pedido p JOIN FETCH p.itens")
     Page<Pedido> findAllWithItens(Pageable pageable); // Evita o N+1 Query Problem
+
+    @Query("SELECT p FROM Pedido p JOIN FETCH p.itens WHERE p.id = :id")
+    Optional<Pedido> findByIdWithItens(@Param("id") Long id);
 }
