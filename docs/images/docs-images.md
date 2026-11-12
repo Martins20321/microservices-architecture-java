@@ -12,17 +12,17 @@ Uma única requisição pode ser acompanhada de ponta a ponta, entre os serviço
 O `pedidos-service` salva o pedido e chama o `inventario-service` por Feign para reservar o
 estoque. As duas partes aparecem no mesmo trace, com cada consulta ao banco como um span.
 
-![Trace: criar pedido, com a reserva de estoque no inventario-service](docs/images/jaeger-trace-criar-pedido.png)
+<img width="1234" height="524" alt="Captura de tela 2026-11-11 120931" src="https://github.com/user-attachments/assets/d0c990d0-97b7-4584-8021-405664dd14c9" />
 
 ### Criar pagamento
 O `pagamentos-service` busca o pedido no `pedidos-service`, valida e salva o pagamento,
 e publica a mensagem na exchange `pagamentos.ex`. O processamento do lado dos pedidos
 aparece no mesmo trace.
 
-![Trace: criar pagamento, com a busca do pedido e a publicação no RabbitMQ](docs/images/jaeger-trace-criar-pagamento.png)
+<img width="1234" height="524" alt="Captura de tela 2026-11-11 121026" src="https://github.com/user-attachments/assets/f74ba79d-8032-48e9-ae9b-75a1d69bf997" />
 
 ### Aprovar pagamento
 O `PATCH .../aprovar` atualiza o pagamento e publica o evento de aprovação. O trace
 continua no consumer do `pedidos-service`, que busca o pedido e atualiza o status.
 
-![Trace: aprovar pagamento, atravessando o RabbitMQ](docs/images/jaeger-trace-aprovar-pagamento.png)
+<img width="1234" height="524" alt="Captura de tela 2026-11-11 121157" src="https://github.com/user-attachments/assets/5a9c1dd7-0afc-4776-9d94-9b1686d349fb" />
