@@ -68,6 +68,7 @@ public class PagamentoListener {
             PedidoResponseDTO pedido = pedidoService.buscarPorId(pagamentoConcluido.pedidoId());
 
             if (pedido.status().equals(StatusPedido.CONFIRMADO)) {
+                log.info("Pagamento aprovado ignorado: pedido {} já está CONFIRMADO", pagamentoConcluido.pedidoId());
                 channel.basicAck(deliveryTag, false); //Confirma que leu a mensagem, mas não faz nada
                 return;
             }
@@ -87,6 +88,7 @@ public class PagamentoListener {
         PedidoResponseDTO pedido = pedidoService.buscarPorId(pagamentoRecusado.pedidoId());
 
         if (pedido.status().equals(StatusPedido.CANCELADO)) {
+            log.info("Pagamento recusado ignorado: pedido {} já está CANCELADO", pagamentoRecusado.pedidoId());
             channel.basicAck(deliveryTag, false);
             return;
         }
@@ -104,6 +106,7 @@ public class PagamentoListener {
         PedidoResponseDTO pedido = pedidoService.buscarPorId(pagamentoCriado.pedidoId());
 
         if (pedido.status().equals(StatusPedido.AGUARDANDO_CONFIRMAR_PAGAMENTO)) {
+            log.info("Pagamento criado ignorado: pedido {} já está AGUARDANDO_CONFIRMAR_PAGAMENTO", pagamentoCriado.pedidoId());
             channel.basicAck(deliveryTag, false);
             return;
         }
