@@ -83,38 +83,92 @@ public class PagamentoListener {
 
     @RabbitListener(queues = "pagamento.recusado-pedido")
     public void receiveRecusado(@Payload PagamentoRecusadoEvent pagamentoRecusado,
+                                Message message,
                                 Channel channel,
                                 @Header(AmqpHeaders.DELIVERY_TAG) Long deliveryTag) throws IOException {
-        PedidoResponseDTO pedido = pedidoService.buscarPorId(pagamentoRecusado.pedidoId());
+        TextMapGetter<MessageProperties> getter = new TextMapGetter<>() {
 
-        if (pedido.status().equals(StatusPedido.CANCELADO)) {
-            log.info("Pagamento recusado ignorado: pedido {} já está CANCELADO", pagamentoRecusado.pedidoId());
+            @Override
+            public Iterable<String> keys(MessageProperties messageProperties) {
+                Set<String> headers = messageProperties.getHeaders().keySet();
+                return headers;
+            }
+
+            @Override
+            public String get(MessageProperties messageProperties, String key) {
+                Object valor = messageProperties.getHeader(key);
+
+                if (valor == null) {
+                    return null;
+                }
+                return String.valueOf(valor);
+            }
+        };
+
+        Context contextExtract = GlobalOpenTelemetry.get()
+                .getPropagators()
+                .getTextMapPropagator()
+                .extract(Context.current(), message.getMessageProperties(), getter);
+
+        try (Scope scope = contextExtract.makeCurrent()) {
+            PedidoResponseDTO pedido = pedidoService.buscarPorId(pagamentoRecusado.pedidoId());
+
+            if (pedido.status().equals(StatusPedido.CANCELADO)) {
+                log.info("Pagamento recusado ignorado: pedido {} já está CANCELADO", pagamentoRecusado.pedidoId());
+                channel.basicAck(deliveryTag, false);
+                return;
+            }
+
+            pedidoService.recusarPagamento(pagamentoRecusado.pedidoId());
             channel.basicAck(deliveryTag, false);
-            return;
+
+            log.info("Pagamento Recusado para o pedido com id: {}", pagamentoRecusado.pedidoId());
         }
-
-        pedidoService.recusarPagamento(pagamentoRecusado.pedidoId());
-        channel.basicAck(deliveryTag, false);
-
-        log.info("Pagamento Recusado para o pedido com id: {}", pagamentoRecusado.pedidoId());
     }
 
     @RabbitListener(queues = "pagamento.aguardado-pedido")
     public void receiveAguardado(@Payload PagamentoCriadoEvent pagamentoCriado,
+                                 Message message,
                                  Channel channel,
                                  @Header(AmqpHeaders.DELIVERY_TAG) Long deliveryTag) throws IOException {
-        PedidoResponseDTO pedido = pedidoService.buscarPorId(pagamentoCriado.pedidoId());
+        TextMapGetter<MessageProperties> getter = new TextMapGetter<>() {
 
-        if (pedido.status().equals(StatusPedido.AGUARDANDO_CONFIRMAR_PAGAMENTO)) {
-            log.info("Pagamento criado ignorado: pedido {} já está AGUARDANDO_CONFIRMAR_PAGAMENTO", pagamentoCriado.pedidoId());
+            @Override
+            public Iterable<String> keys(MessageProperties messageProperties) {
+                Set<String> headers = messageProperties.getHeaders().keySet();
+                return headers;
+            }
+
+            @Override
+            public String get(MessageProperties messageProperties, String key) {
+                Object valor = messageProperties.getHeader(key);
+
+                if (valor == null) {
+                    return null;
+                }
+                return String.valueOf(valor);
+            }
+        };
+
+        Context contextExtract = GlobalOpenTelemetry.get()
+                .getPropagators()
+                .getTextMapPropagator()
+                .extract(Context.current(), message.getMessageProperties(), getter);
+
+        try (Scope scope = contextExtract.makeCurrent()) {
+            PedidoResponseDTO pedido = pedidoService.buscarPorId(pagamentoCriado.pedidoId());
+
+            if (pedido.status().equals(StatusPedido.AGUARDANDO_CONFIRMAR_PAGAMENTO)) {
+                log.info("Pagamento criado ignorado: pedido {} já está AGUARDANDO_CONFIRMAR_PAGAMENTO", pagamentoCriado.pedidoId());
+                channel.basicAck(deliveryTag, false);
+                return;
+            }
+
+            pedidoService.aguardarPagamento(pagamentoCriado.pedidoId()); //Processa primeiro e confirma depois
             channel.basicAck(deliveryTag, false);
-            return;
+
+            log.info("Pagamento criado para o pedido com id: {} " +
+                    "e o status atualizado para confirmar pagamento", pagamentoCriado.pedidoId());
         }
-
-        pedidoService.aguardarPagamento(pagamentoCriado.pedidoId()); //Processa primeiro e confirma depois
-        channel.basicAck(deliveryTag, false);
-
-        log.info("Pagamento criado para o pedido com id: {} " +
-                "e o status atualizado para confirmar pagamento", pagamentoCriado.pedidoId());
     }
 }
