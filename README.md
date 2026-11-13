@@ -21,7 +21,7 @@ Sistema de Pedidos, Pagamentos, Notificações e Inventário composto por micros
 
 <img width="1234" height="524" alt="DiagramaAWS drawio" src="https://github.com/user-attachments/assets/ec25131d-7e59-474e-b3bd-b304be6f9ed8" />
 
-> ⚠️ Diagramas em atualização; Ainda não refletem a arquitetura de mensageria com RabbitMQ, o `notificacoes-service`, o `inventario-service` nem a stack de observabilidade (Actuator + Prometheus + Grafana + AlertManager). Serão redesenhados em breve.
+> ⚠️ Diagramas em atualização; Serão redesenhados conforme o projeto for avançando.
 
 ### Fluxo principal
 
