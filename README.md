@@ -14,8 +14,7 @@ Sistema de Pedidos, Pagamentos, Notificações e Inventário composto por micros
 
 ### Local (Desenvolvimento)
 
-<img width="1839" height="725" alt="Microservices-diagrama drawio" src="https://github.com/user-attachments/assets/25c59e07-f67b-44a0-b7d2-964e1d0f4e54" />
-
+<img width="1839" height="725" alt="Diagrama-microservices drawio" src="https://github.com/user-attachments/assets/9ce753ed-451e-40fb-93f7-ac1e0731755f" />
 
 ### AWS (Produção)
 
