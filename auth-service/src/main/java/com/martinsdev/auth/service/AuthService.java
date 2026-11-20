@@ -1,5 +1,6 @@
 package com.martinsdev.auth.service;
 
+import com.martinsdev.auth.dto.LoginJWTResponseDTO;
 import com.martinsdev.auth.dto.UsuarioCriarRequestDTO;
 import com.martinsdev.auth.infra.exception.EmailAlreadyExistsException;
 import com.martinsdev.auth.model.Usuario;
@@ -14,8 +15,9 @@ public class AuthService {
 
     private final UsuarioRepository usuarioRepository;
     private final PasswordEncoder passwordEncoder;
+    private final TokenService tokenService;
 
-    public Usuario register(UsuarioCriarRequestDTO usuarioDTO) {
+    public LoginJWTResponseDTO register(UsuarioCriarRequestDTO usuarioDTO) {
 
         if (usuarioRepository.existsByEmail(usuarioDTO.email())) {
             throw new EmailAlreadyExistsException(usuarioDTO.email());
@@ -28,7 +30,10 @@ public class AuthService {
                 .ativo(true)
                 .build();
 
-        usuarioRepository.save(usuario);
-        return usuario;
+        Usuario savedUser = usuarioRepository.save(usuario);
+
+        String token = tokenService.geracaoToken(savedUser);
+
+        return new LoginJWTResponseDTO(token);
     }
 }
