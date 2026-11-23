@@ -1,11 +1,15 @@
 package com.martinsdev.auth.service;
 
 import com.martinsdev.auth.dto.LoginJWTResponseDTO;
+import com.martinsdev.auth.dto.LoginRequestDTO;
 import com.martinsdev.auth.dto.UsuarioCriarRequestDTO;
 import com.martinsdev.auth.infra.exception.EmailAlreadyExistsException;
 import com.martinsdev.auth.model.Usuario;
 import com.martinsdev.auth.repository.UsuarioRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -16,6 +20,7 @@ public class AuthService {
     private final UsuarioRepository usuarioRepository;
     private final PasswordEncoder passwordEncoder;
     private final TokenService tokenService;
+    private final AuthenticationManager authenticationManager;
 
     public LoginJWTResponseDTO register(UsuarioCriarRequestDTO usuarioDTO) {
 
@@ -33,6 +38,15 @@ public class AuthService {
         Usuario savedUser = usuarioRepository.save(usuario);
 
         String token = tokenService.geracaoToken(savedUser);
+
+        return new LoginJWTResponseDTO(token);
+    }
+
+    public LoginJWTResponseDTO login(LoginRequestDTO loginDTO) {
+
+        UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(loginDTO.email(), loginDTO.password());
+        Authentication authenticatedToken = authenticationManager.authenticate(authenticationToken);
+        String token = tokenService.geracaoToken((Usuario) authenticatedToken.getPrincipal());
 
         return new LoginJWTResponseDTO(token);
     }
