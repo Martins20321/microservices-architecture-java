@@ -1,6 +1,7 @@
 package com.martinsdev.auth.controller;
 
 import com.martinsdev.auth.dto.LoginJWTResponseDTO;
+import com.martinsdev.auth.dto.LoginRequestDTO;
 import com.martinsdev.auth.dto.UsuarioCriarRequestDTO;
 import com.martinsdev.auth.service.AuthService;
 import jakarta.validation.Valid;
@@ -22,5 +23,10 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<LoginJWTResponseDTO> register(@RequestBody @Valid UsuarioCriarRequestDTO usuarioDTO) {
         return ResponseEntity.status(HttpStatus.CREATED).body(authService.register(usuarioDTO));
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<LoginJWTResponseDTO> login(@RequestBody @Valid LoginRequestDTO loginDTO) {
+        return ResponseEntity.ok(authService.login(loginDTO));
     }
 }

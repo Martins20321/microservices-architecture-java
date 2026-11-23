@@ -22,7 +22,7 @@ public class SecurityConfigurations {
                 .sessionManagement(sessionManagement ->
                         sessionManagement.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth ->
-                        auth.requestMatchers(HttpMethod.POST, "/v1/auth/register").permitAll()
+                        auth.requestMatchers(HttpMethod.POST, "/v1/auth/register", "/v1/auth/login").permitAll()
                                 .anyRequest().authenticated())
                 .build();
     }
