@@ -3,6 +3,8 @@ package com.martinsdev.auth.service;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTCreationException;
+import com.auth0.jwt.exceptions.JWTVerificationException;
+import com.martinsdev.auth.infra.exception.InvalidTokenException;
 import com.martinsdev.auth.infra.security.RsaKeyProvider;
 import com.martinsdev.auth.model.Usuario;
 import lombok.RequiredArgsConstructor;
@@ -29,7 +31,21 @@ public class TokenService {
                     .withExpiresAt(expirationDate())
                     .sign(algorithm);
         } catch (JWTCreationException exception) {
-            throw  new RuntimeException("Error generation JWT token", exception);
+            throw new RuntimeException("Error generation JWT token", exception);
+        }
+    }
+
+    public String getSubject(String token) {
+        try {
+            Algorithm algorithm = Algorithm.RSA256(keyProvider.rsaPublicKey(), null);
+            return JWT.require(algorithm)
+                    .withIssuer("auth-service")
+                    .build()
+                    .verify(token)
+                    .getSubject();
+
+        } catch (JWTVerificationException exception) {
+            throw new InvalidTokenException("Invalid or expired JWT Token");
         }
     }
 
