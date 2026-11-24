@@ -1,5 +1,6 @@
 package com.martinsdev.auth.infra.security;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -14,7 +15,10 @@ import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
 @EnableWebSecurity
+@RequiredArgsConstructor
 public class SecurityConfigurations {
+
+    private final SecurityFilter securityFilter;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity security) {
@@ -24,6 +28,7 @@ public class SecurityConfigurations {
                 .authorizeHttpRequests(auth ->
                         auth.requestMatchers(HttpMethod.POST, "/v1/auth/register", "/v1/auth/login").permitAll()
                                 .anyRequest().authenticated())
+                .addFilterBefore(securityFilter, SecurityFilter.class)
                 .build();
     }
 
