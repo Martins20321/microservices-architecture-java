@@ -46,7 +46,7 @@ public class SecurityFilter extends OncePerRequestFilter {
                         throw new ForbiddenException("Your account has been disabled. Contact an administrator");
                     }
 
-                    UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(usuario, null, usuario.getAuthorities());
+                    UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(usuario, null, usuario.getAuthorities()); // cria o usuario ja autenticado
                     SecurityContextHolder.getContext().setAuthentication(authenticationToken);
                 }
             } catch (InvalidTokenException | UsernameNotFoundException exception) { // token inválido ou usuario inexistente
