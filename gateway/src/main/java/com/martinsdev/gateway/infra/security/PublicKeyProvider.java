@@ -1,4 +1,4 @@
-package com.martinsdev.gateway.security;
+package com.martinsdev.gateway.infra.security;
 
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
