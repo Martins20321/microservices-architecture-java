@@ -15,7 +15,7 @@ public class TokenVerifier {
         this.publicKeyProvider = publicKeyProvider;
     }
 
-    public String getSubject(String token) {
+    public String verify(String token) {
         try {
             Algorithm algorithm = Algorithm.RSA256(publicKeyProvider.rsaPublicKey(), null);
             return JWT.require(algorithm)
